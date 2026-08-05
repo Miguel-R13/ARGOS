@@ -80,16 +80,17 @@ Todos los escenarios están implementados sobre endpoint **Linux**. Endpoint **W
 
 | # | Escenario | TTP MITRE ATT&CK | Estado |
 |---|---|---|---|
-| 01 | Fuerza bruta SSH | T1110 · Brute Force | ✅ |
-| 02 | Escalada de privilegios con sudo | T1548.003 · Sudo and Sudo Caching | ✅ |
-| 03 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
-| 04 | Enumeración de usuarios | T1087.001 · Account Discovery | ✅ |
-| 05 | Movimiento lateral SSH | T1021.004 · Remote Services: SSH | ✅ |
-| 06 | Transferencia lateral SCP/SFTP | T1570 · Lateral Tool Transfer | ✅ |
-| 07 | Reverse shell | T1059.004 · Command and Scripting Interpreter | ✅ |
-| 08 | Cron job malicioso | T1053.003 · Scheduled Task/Job: Cron | ✅ |
-| 09 | Exfiltración de datos vía curl/wget | T1041 + T1105 | ✅ |
-| 10 | Desactivación de herramientas de seguridad | T1562.001 · Impair Defenses | ✅ |
+| 01 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
+| 02 | Fuerza bruta SSH | T1110 · Brute Force | ✅ |
+| 03 | Enumeración de usuarios | T1087.001 · Account Discovery | ✅ |
+| 04 | Escalada de privilegios con sudo | T1548.003 · Sudo and Sudo Caching | ✅ |
+| 05 | Reverse shell | T1059.004 · Command and Scripting Interpreter | ✅ |
+| 06 | Cron job malicioso | T1053.003 · Scheduled Task/Job: Cron | ✅ |
+| 07 | Movimiento lateral SSH | T1021.004 · Remote Services: SSH | ✅ |
+| 08 | Transferencia lateral SCP/SFTP | T1570 · Lateral Tool Transfer | ✅ |
+| 09 | Desactivación de herramientas de seguridad | T1562.001 · Impair Defenses | ✅ |
+| 10 | Exfiltración de datos vía curl/wget | T1041 + T1105 | ✅ |
+
 
 ---
 
