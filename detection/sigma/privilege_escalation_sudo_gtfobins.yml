@@ -1,0 +1,39 @@
+title: ARGOS - GTFOBins Shell Escalation via Sudo
+id: 18768671-a819-4ac3-b575-8e5f7a0f16ba
+status: experimental
+description: >
+  Detects privilege escalation via GTFOBins techniques using sudo with
+  interpreters and utilities to spawn an interactive root shell.
+  Covers python3, perl, vim and awk as documented in gtfobins.github.io.
+  Inspired by SigmaHQ rules proc_creation_lnx_python_shell_os_system,
+  proc_creation_lnx_perl_reverse_shell, proc_creation_lnx_vim_shell_execution
+  and proc_creation_lnx_awk_shell_spawn, adapted for sudo auth.log format.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/05
+level: high
+tags:
+  - attack.t1548.003
+  - attack.t1059
+logsource:
+  product: linux
+  service: sudo
+detection:
+  keywords:
+    - 'COMMAND=/usr/bin/python3'
+    - 'COMMAND=/usr/bin/python'
+    - 'COMMAND=/usr/bin/perl'
+    - 'COMMAND=/usr/bin/vim'
+    - 'COMMAND=/usr/bin/awk'
+    - 'COMMAND=/usr/bin/gawk'
+    - 'os.system('
+    - 'pty.spawn('
+    - 'BEGIN {system'
+    - ':!/bin/'
+  condition: keywords
+falsepositives:
+  - Administrators running legitimate python3 or perl scripts via sudo
+  - System scripts using awk for text processing with sudo
+references:
+  - https://attack.mitre.org/techniques/T1548/003/
+  - https://attack.mitre.org/techniques/T1059/
+  - https://gtfobins.github.io/

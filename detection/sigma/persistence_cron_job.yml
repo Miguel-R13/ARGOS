@@ -1,0 +1,31 @@
+title: ARGOS - Malicious Cron Job Persistence Detected
+id: 2e8b4f1a-7c3d-4a9e-b6f8-3d2c1e5f9b0a
+status: experimental
+description: >
+  Detects creation or modification of cron files and directories that may
+  indicate persistence via scheduled tasks. Covers all standard cron
+  locations: /etc/crontab, /etc/cron.d/, /etc/cron.hourly/,
+  /etc/cron.daily/, /etc/cron.weekly/, /etc/cron.monthly/ and
+  /var/spool/cron/crontabs/. Monitored via auditd with key
+  argos_cron_modify. Inspired by SigmaHQ file_event_lnx_persistence_cron_files
+  by Roberto Rodriguez, adapted for auditd format.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/23
+level: high
+tags:
+  - attack.t1053.003
+  - attack.persistence
+  - attack.execution
+logsource:
+  product: linux
+  service: auditd
+detection:
+  keywords:
+    - 'argos_cron_modify'
+  condition: keywords
+falsepositives:
+  - System administrators adding legitimate cron jobs
+  - Package managers installing cron tasks during software installation
+references:
+  - https://attack.mitre.org/techniques/T1053/003/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/linux/file_event/file_event_lnx_persistence_cron_files.yml

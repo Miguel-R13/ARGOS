@@ -1,0 +1,21 @@
+<group name="argos,persistence,">
+
+  <!-- ARGOS Rule 100700: Malicious cron job persistence -->
+  <!-- NEW: No equivalent built-in rule in Wazuh -->
+  <!-- Detects write/append to cron files via auditd argos_cron_modify key -->
+  <!-- Covers /etc/crontab, /etc/cron.d/, /etc/cron.daily/, -->
+  <!-- /etc/cron.hourly/, /etc/cron.weekly/, /etc/cron.monthly/, -->
+  <!-- /var/spool/cron/crontabs/ -->
+  <!-- Inspired by SigmaHQ file_event_lnx_persistence_cron_files -->
+  <rule id="100700" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">argos_cron_modify</field>
+    <field name="audit.success">yes</field>
+    <description>ARGOS: Cron file modification detected by $(audit.exe) - possible persistence T1053.003</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>argos,persistence,cron_modify</group>
+  </rule>
+
+</group>

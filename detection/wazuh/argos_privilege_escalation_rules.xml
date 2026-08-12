@@ -1,0 +1,71 @@
+
+<group name="argos,privilege_escalation,">e
+  <!-- ARGOS Rule 100200: Unauthorized sudo attempt -->
+  <!-- Tuning: level raised from 5 to 13 (critical) -->
+  <!-- A user not in sudoers attempting sudo is always suspicious -->
+  <rule id="100200" level="13">
+    <if_sid>5405</if_sid>
+    <description>ARGOS: Unauthorized sudo attempt - user $(srcuser) is not in sudoers file</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>argos,privilege_escalation,unauthorized_sudo</group>
+  </rule>
+
+<!-- ARGOS Rule 100201: Sudo shell escalation to root -->
+  <!-- NEW: No equivalent built-in rule in Wazuh -->
+  <!-- Detects direct shell execution as root via sudo -->
+  <rule id="100201" level="12">
+    <if_sid>5402</if_sid>
+    <match>COMMAND=/usr/bin/su|COMMAND=/usr/bin/bash|COMMAND=/usr/bin/sh|COMMAND=/usr/bin/dash|COMMAND=/bin/su|COMMAND=/bin/bash|COMMAND=/bin/sh|COMMAND=/bin/dash</match>
+    <description>ARGOS: Sudo shell escalation to root - $(srcuser) obtained interactive root shell via $(data.command)</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>argos,privilege_escalation,shell_escalation</group>
+  </rule>
+
+<!-- ARGOS Rule 100202: GTFOBins shell escalation via sudo -->
+  <!-- NEW: No equivalent built-in rule in Wazuh -->
+  <!-- Inspired by SigmaHQ: proc_creation_lnx_python_shell_os_system, -->
+  <!-- proc_creation_lnx_perl_reverse_shell, proc_creation_lnx_vim_shell_execution -->
+  <!-- proc_creation_lnx_awk_shell_spawn - adapted for sudo auth.log format -->
+  <rule id="100202" level="12">
+    <if_group>sudo</if_group>
+    <match>COMMAND=/usr/bin/python3|COMMAND=/usr/bin/python2|COMMAND=/usr/bin/perl|COMMAND=/usr/bin/vim|COMMAND=/usr/bin/awk |COMMAND=/usr/bin/gawk |os.system\(|pty.spawn\(|BEGIN {system|:!/bin/</match>
+    <description>ARGOS: GTFOBins shell escalation via sudo - $(srcuser) used $(data.command) to obtain root shell</description>
+    <mitre>
+      <id>T1548.003</id>
+      <id>T1059</id>
+    </mitre>
+  <group>argos,privilege_escalation,gtfobins</group>
+  </rule>
+
+<!-- ARGOS Rule 100203: Sudoers file access via auditd -->
+  <!-- NEW: No equivalent built-in rule in Wazuh for file access detection -->
+  <!-- Covers both successful and failed access attempts -->
+  <rule id="100203" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">argos_sudoers_access</field>
+    <description>ARGOS: Sudoers file access detected - $(audit.exe) accessed /etc/sudoers (success=$(audit.success))</description>
+    <mitre>
+      <id>T1592.004</id>
+    </mitre>
+    <group>argos,reconnaissance,sudoers_access</group>
+  </rule>
+
+<!-- ARGOS Rule 100204: Sudoers.d file modification - Persistence -->
+  <!-- NEW: No equivalent built-in rule in Wazuh -->
+  <!-- Inspired by SigmaHQ: file_event_lnx_persistence_sudoers_files -->
+  <!-- Detects backdoor creation via sudoers.d directory modification -->
+  <rule id="100204" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">argos_sudoers_modify</field>
+    <description>ARGOS: Sudoers.d modification detected - $(audit.exe) modified /etc/sudoers.d/ (possible persistence backdoor)</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>argos,privilege_escalation,persistence,sudoers_modify</group>
+  </rule>
+	
+</group>

@@ -1,0 +1,37 @@
+title: ARGOS - UAC Bypass via Fodhelper.exe Registry Manipulation
+id: d4e1f3b2-8c5a-4e9b-b7f3-2d7e0a3c5b8f
+status: experimental
+description: >
+  Detects UAC bypass technique using fodhelper.exe by monitoring registry
+  modifications to HKCU\Software\Classes\ms-settings\shell\open\command.
+  The attacker writes a command interpreter (cmd.exe or powershell.exe)
+  to this registry key so that when fodhelper.exe auto-elevates, it
+  executes the attacker's binary with High integrity level without UAC
+  prompt. Telemetry: Sysmon Event ID 13 (Registry Value Set).
+  Wazuh native rules 92304/92305/92056 detect individual steps at levels
+  6/12/14. ARGOS adds kill chain correlation context.
+  Validated empirically in ARGOS lab on Windows 10 Pro 192.168.234.20.
+  Note: Windows Defender detects this as Trojan:Win32/UacBypass.I!MTB
+  and must be disabled for lab simulation.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/13
+level: high
+tags:
+  - attack.privilege_escalation
+  - attack.defense_evasion
+  - attack.t1548.002
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection:
+    TargetObject|contains: 'ms-settings\shell\open\command'
+    Image|endswith: '\reg.exe'
+  condition: selection
+falsepositives:
+  - Legitimate software modifying ms-settings handlers
+  - System administrators testing UAC configurations
+references:
+  - https://attack.mitre.org/techniques/T1548/002/
+  - https://enigma0x3.net/2017/03/17/fileless-uac-bypass-using-cmstp-exe/
+

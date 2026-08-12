@@ -1,0 +1,32 @@
+title: ARGOS - Reverse Shell Connection Detected via Auditd
+id: 4d7f2a1e-8c3b-4e9d-b5f6-1a2c8e0d4b7f
+status: experimental
+description: >
+  Detects outbound network connections from shell interpreters and scripting
+  tools that may indicate a reverse shell. Monitors the connect() syscall
+  for bash, python3, netcat and perl via auditd. A reverse shell occurs when
+  a compromised system initiates an outbound connection to an attacker-
+  controlled host, bypassing inbound firewall rules. Unlike bash reverse
+  shells which cannot be detected via proctitle, the connect() syscall is
+  mandatory for all reverse shell implementations regardless of the method
+  used. Inspired by SigmaHQ lnx_shell_susp_rev_shells.yml, adapted for
+  auditd syscall-level detection with ARGOS key argos_reverse_shell.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/22
+level: critical
+tags:
+  - attack.t1059.004
+  - attack.t1071.001
+logsource:
+  product: linux
+  service: auditd
+detection:
+  keywords:
+    - 'argos_reverse_shell'
+  condition: keywords
+falsepositives:
+  - Legitimate scripts using bash or python3 to make outbound connections
+  - Monitoring tools and agents making network connections
+references:
+  - https://attack.mitre.org/techniques/T1059/004/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/linux/builtin/lnx_shell_susp_rev_shells.yml

@@ -1,0 +1,25 @@
+<group name="argos,network_reconnaissance,">
+  <!-- ARGOS Rule 100300: UFW BLOCK event individual -->
+  <!-- NEW: No equivalent built-in rule in Wazuh for UFW BLOCK action -->
+  <!-- Detects individual UFW BLOCK events as base for port scan correlation -->
+  <rule id="100300" level="3">
+    <if_sid>4100</if_sid>
+    <action>UFW BLOCK</action>
+    <description>ARGOS: UFW blocked connection from $(srcip) to port $(dstport)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>argos,network_reconnaissance,ufw_block</group>
+  </rule>
+  <!-- ARGOS Rule 100301: Port scan detection - multiple UFW BLOCK from same IP -->
+  <!-- TUNING: Native 4151 level 10, freq 18, action=DROP -> ARGOS level 10, freq 10, action=UFW BLOCK -->
+  <rule id="100301" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>100300</if_matched_sid>
+    <same_source_ip />
+    <description>ARGOS: Port scan detected from $(srcip) - 15+ UFW BLOCK events in 60 seconds</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>argos,network_reconnaissance,port_scan</group>
+  </rule>
+</group>

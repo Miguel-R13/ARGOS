@@ -1,0 +1,30 @@
+title: ARGOS - Sudoers.d File Modification Detected
+id: 754ad594-c27a-4bf3-990f-1ef2d4e894a0
+status: experimental
+description: >
+  Detects creation or modification of files within /etc/sudoers.d/ directory
+  via auditd syscall monitoring. Files in this directory are automatically
+  loaded by sudo as extensions of the main sudoers file, allowing attackers
+  to grant permanent root privileges without password. This is a persistence
+  technique that survives password changes. Inspired by SigmaHQ rule
+  file_event_lnx_persistence_sudoers_files by Nasreddine Bencherchali,
+  adapted for auditd format and enriched with argos_sudoers_modify key.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/07
+level: high
+tags:
+  - attack.t1548.003
+logsource:
+  product: linux
+  service: auditd
+detection:
+  keywords:
+    - '/etc/sudoers.d/'
+    - 'argos_sudoers_modify'
+  condition: keywords
+falsepositives:
+  - System administrators adding legitimate sudo rules
+  - Package managers creating files during software installation (dpkg)
+references:
+  - https://attack.mitre.org/techniques/T1548/003/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/linux/file_event/file_event_lnx_persistence_sudoers_files.yml

@@ -1,0 +1,28 @@
+title: ARGOS - Sudoers File Access Detected
+id: 683853f0-9fe0-44c6-970a-1abd854dcb3b
+status: experimental
+description: >
+  Detects access to /etc/sudoers file via auditd syscall monitoring.
+  Covers both successful and failed access attempts. Reading sudoers
+  is a reconnaissance technique used to identify privilege escalation
+  paths before an attack. Inspired by SigmaHQ rule
+  proc_creation_lnx_susp_process_reading_sudoers.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/06
+level: medium
+tags:
+  - attack.t1592.004
+logsource:
+  product: linux
+  service: auditd
+detection:
+  keywords:
+    - '/etc/sudoers'
+    - 'argos_sudoers_access'
+  condition: keywords
+falsepositives:
+  - System administrators auditing sudo permissions
+  - Automated configuration management tools reading sudoers
+references:
+  - https://attack.mitre.org/techniques/T1592/004/
+  - https://gtfobins.github.io/

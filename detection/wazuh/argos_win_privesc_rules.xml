@@ -1,0 +1,28 @@
+<group name="argos,privilege_escalation,">
+
+  <!-- ARGOS Rule 101400: UAC bypass fodhelper - registry modification phase -->
+  <!-- Wazuh native 92305 (level 12) detects individual event -->
+  <!-- ARGOS adds T1548.002 context and correlation base -->
+  <!-- Telemetry: Sysmon Event ID 13 (Registry Value Set) -->
+  <rule id="101400" level="12">
+    <if_sid>92305</if_sid>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)ms-settings\\shell\\open\\command</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)reg\.exe$</field>
+    <description>ARGOS: UAC bypass preparation - command interpreter written to ms-settings key by $(win.eventdata.user)</description>
+    <mitre><id>T1548.002</id></mitre>
+    <group>argos,privilege_escalation,uac_bypass</group>
+  </rule>
+
+  <!-- ARGOS Rule 101401: UAC bypass fodhelper - execution phase correlation -->
+  <!-- Fires when fodhelper is executed after registry manipulation -->
+  <!-- Completes the kill chain: registry prep + auto-elevation -->
+  <rule id="101401" level="15">
+    <if_sid>92056</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)fodhelper\.exe$</field>
+    <field name="win.eventdata.integrityLevel">High</field>
+    <description>ARGOS: UAC bypass via fodhelper.exe confirmed - process elevated to High integrity by $(win.eventdata.user)</description>
+    <mitre><id>T1548.002</id></mitre>
+    <group>argos,privilege_escalation,uac_bypass,confirmed</group>
+  </rule>
+
+</group>

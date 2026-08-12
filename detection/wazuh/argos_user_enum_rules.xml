@@ -1,0 +1,33 @@
+<group name="argos,user_enumeration,">
+  <!-- ARGOS Rule 100400: /etc/shadow access - base rule -->
+  <!-- auditd monitors /etc/shadow with -p war -->
+  <!-- Only shadow: passwd y group quedan en -p wa para evitar ruido de procesos legitimos -->
+  <rule id="100400" level="0">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">argos_user_files</field>
+    <field name="audit.file.name">/etc/shadow</field>
+    <description>ARGOS: Access to /etc/shadow detected</description>
+  </rule>
+
+  <!-- ARGOS Rule 100401: Exclude legitimate PAM processes -->
+  <!-- unix_chkpwd: PAM helper that reads shadow during authentication -->
+  <!-- sshd y sudo: delegation to PAM layer -->
+  <rule id="100401" level="0">
+    <if_sid>100400</if_sid>
+    <field name="audit.exe">/usr/sbin/unix_chkpwd|/usr/sbin/sshd|/usr/bin/sudo|/usr/sbin/cron|/usr/libexec/gdm</field>
+    <description>ARGOS: Excluded - legitimate PAM process reading /etc/shadow</description>
+  </rule>
+
+  <!-- ARGOS Rule 100402: Suspicious /etc/shadow read - possible user enumeration -->
+  <!-- Any process reading shadow that is not PAM is malicious -->
+  <!-- Zero legitimate false positives expected -->
+  <rule id="100402" level="12">
+    <if_sid>100400</if_sid>
+    <field name="audit.exe" negate="yes">/usr/sbin/unix_chkpwd|/usr/sbin/sshd|/usr/bin/sudo|/usr/sbin/cron|/usr/libexec/gdm</field>
+    <description>ARGOS: Suspicious /etc/shadow access by $(audit.exe) - possible T1087.001 user enumeration</description>
+    <mitre>
+      <id>T1087.001</id>
+    </mitre>
+    <group>argos,user_enumeration,account_discovery</group>
+  </rule>
+</group>

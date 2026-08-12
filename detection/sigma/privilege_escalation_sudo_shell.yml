@@ -1,0 +1,32 @@
+title: ARGOS - Sudo Shell Escalation to Root Detected
+id: 86b5d41e-0901-4aef-899b-f1c419d94fe8
+status: experimental
+description: >
+  Detects execution of interactive shells via sudo that grant direct root
+  access. Covers su, bash, sh and dash executed as root via sudo.
+  Inspired by GTFOBins documented privilege escalation techniques.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/05
+level: high
+tags:
+  - attack.t1548.003
+logsource:
+  product: linux
+  service: sudo
+detection:
+  keywords:
+    - 'COMMAND=/usr/bin/su'
+    - 'COMMAND=/usr/bin/bash'
+    - 'COMMAND=/usr/bin/sh'
+    - 'COMMAND=/usr/bin/dash'
+    - 'COMMAND=/bin/su'
+    - 'COMMAND=/bin/bash'
+    - 'COMMAND=/bin/sh'
+    - 'COMMAND=/bin/dash'
+  condition: keywords
+falsepositives:
+  - System administrators performing legitimate root shell sessions for maintenance
+  - Automated deployment scripts requiring root shell access
+references:
+  - https://attack.mitre.org/techniques/T1548/003/
+  - https://gtfobins.github.io/

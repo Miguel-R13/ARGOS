@@ -1,0 +1,32 @@
+<group name="argos,defense_evasion,">
+
+  <!-- ARGOS Rule 100900: Security services stopped or disabled -->
+  <!-- NEW: No equivalent built-in rule in Wazuh -->
+  <!-- Detects when auditd, wazuh-agent or ufw are stopped -->
+  <!-- via systemd service lifecycle events in syslog -->
+  <!-- Telemetry: /var/log/syslog via wazuh-agent localfile -->
+  <rule id="100900" level="13">
+    <if_sid>40700</if_sid>
+    <match>auditd.service: Deactivated successfully|wazuh-agent.service: Deactivated successfully|ufw.service: Deactivated successfully|Stopped Uncomplicated firewall|Wazuh v4.9.2 Stopped|The audit daemon is exiting</match>
+    <description>ARGOS: Critical security service stopped - possible T1562.001 defense evasion</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>argos,defense_evasion,impair_defenses</group>
+  </rule>
+
+<!-- ARGOS Rule 100901: Security config files modified -->
+  <!-- NEW: Detects modification of logging and security config files -->
+  <!-- Covers: syslog, audit, journald, rsyslog, ossec.conf -->
+  <rule id="100901" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">argos_defense_evasion</field>
+    <field name="audit.success">yes</field>
+    <description>ARGOS: Security configuration file modified by $(audit.exe) - possible T1562.001</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>argos,defense_evasion,impair_defenses</group>
+  </rule>
+
+</group>

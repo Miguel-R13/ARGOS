@@ -1,0 +1,38 @@
+
+title: ARGOS - Data Exfiltration or Ingress Tool Transfer via curl/wget
+id: 9f3a2c1e-5b7d-4e8f-a6c2-1d3e9b0f4a7c
+status: experimental
+description: >
+  Detects execution of curl, wget, ftp, nc, socat or python3 that may
+  indicate data exfiltration (T1041) or ingress tool transfer (T1105).
+  These tools are native Linux utilities used by attackers to upload
+  sensitive data to external servers or download malicious payloads.
+  Telemetry source: auditd execve syscall or watch on binaries with
+  key argos_exfil. NOTE: validated in production environments with
+  standard kernel. In Ubuntu 22.04 kernel 6.8 on VMware, auditd syscall
+  capture of binary execution is limited. Detection requires kernel
+  supporting auditd execve/connect syscall rules. Inspired by SigmaHQ
+  lnx_auditd_data_exfil_wget by Pawel Mazur and
+  lnx_auditd_susp_c2_commands by Marie Euler.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/25
+level: high
+tags:
+  - attack.t1041
+  - attack.t1105
+logsource:
+  product: linux
+  service: auditd
+detection:
+  keywords:
+    - 'argos_exfil'
+  condition: keywords
+falsepositives:
+  - Legitimate administrators using curl or wget for system maintenance
+  - Package managers and update systems using wget internally
+  - CI/CD pipelines downloading build artifacts
+references:
+  - https://attack.mitre.org/techniques/T1041/
+  - https://attack.mitre.org/techniques/T1105/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/linux/auditd/execve/lnx_auditd_data_exfil_wget.yml
+  - https://detection.fyi/sigmahq/sigma/linux/auditd/lnx_auditd_susp_c2_commands/

@@ -1,0 +1,39 @@
+title: ARGOS - Windows Local User Enumeration via Net Commands
+id: c5d3f2a1-9e4b-4f7c-a8d2-1e6b9f2c4a7d
+status: experimental
+description: >
+  Detects local user and group enumeration via native Windows net.exe and
+  net1.exe commands. Covers net user, net localgroup and net accounts.
+  Telemetry source: Sysmon Event ID 1 (Process Creation) via Wazuh agent.
+  net1.exe is always spawned as child process of net.exe and must be
+  included as invariant. wmic useraccount was tested empirically and
+  confirmed not captured by SwiftOnSecurity Sysmon config - documented
+  as coverage gap. Validated empirically in ARGOS lab from Windows 10
+  Pro endpoint 192.168.234.20 post-RDP access (ESC12).
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/13
+level: medium
+tags:
+  - attack.discovery
+  - attack.t1087.001
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith:
+      - '\net.exe'
+      - '\net1.exe'
+    CommandLine|contains:
+      - 'user'
+      - 'localgroup'
+      - 'accounts'
+  condition: selection
+falsepositives:
+  - System administrators running legitimate user management commands
+  - IT helpdesk scripts performing account inventory
+  - Monitoring agents querying local accounts
+references:
+  - https://attack.mitre.org/techniques/T1087/001/
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/net-user
+
