@@ -1,0 +1,39 @@
+title: ARGOS - Suspicious Access to /etc/shadow
+id: 3c8f1a2e-9d4b-4e7f-b1c6-2a5d8e0f3b9c
+status: experimental
+description: >
+  Detects suspicious read access to /etc/shadow by non-PAM processes.
+  /etc/shadow is only legitimately read by PAM components (unix_chkpwd,
+  sshd, sudo) and cron for password expiry checks. Any other process
+  reading shadow indicates user enumeration or credential harvesting.
+  Design decision: /etc/passwd and /etc/group are monitored with -p wa
+  only (no read capture) because they are read constantly by legitimate
+  system processes generating unacceptable noise. /etc/shadow has a
+  well-defined set of legitimate readers, making read detection viable
+  with near-zero false positives.
+  No equivalent rule in SigmaHQ for Linux. Validated empirically in ARGOS lab.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/28
+level: high
+tags:
+  - attack.discovery
+  - attack.t1087.001
+logsource:
+  product: linux
+  service: auditd
+detection:
+  shadow_access:
+    audit.key: 'argos_user_files'
+    audit.file.name: '/etc/shadow'
+  filter_pam:
+    audit.exe|contains:
+      - 'unix_chkpwd'
+      - 'sshd'
+      - 'sudo'
+      - 'cron'
+  condition: shadow_access and not filter_pam
+falsepositives:
+  - Identity management agents reading shadow for sync purposes
+  - Backup scripts with elevated privileges
+references:
+  - https://attack.mitre.org/techniques/T1087/001/

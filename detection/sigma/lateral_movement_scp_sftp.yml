@@ -1,0 +1,33 @@
+title: ARGOS - Lateral Tool Transfer via SCP or SFTP Detected
+id: 7f3a9c2e-1b5d-4e8f-c2a7-9d4b6e1f3c8a
+status: experimental
+description: >
+  Detects file transfer via SCP or SFTP between internal endpoints that
+  may indicate lateral tool transfer (T1570). Both SCP (/usr/bin/scp)
+  and SFTP (/usr/lib/openssh/sftp-server) access /etc/passwd during
+  transfer, captured by the argos_user_files auditd key. Empirically
+  validated during ARGOS lab testing. Complements T1021.004 SSH lateral
+  movement detection.
+    detection: where T1021.004 covers interactive sessions, T1570 covers
+  file transfers between compromised endpoints.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/18
+level: high
+tags:
+  - attack.t1570
+  - attack.t1021.004
+logsource:
+  product: linux
+  service: auditd
+detection:
+  keywords:
+    - 'argos_user_files'
+    - '/usr/bin/scp'
+    - 'sftp-server'
+  condition: keywords
+falsepositives:
+  - Legitimate administrators transferring files via SCP for maintenance
+  - Automated backup scripts using SCP
+references:
+  - https://attack.mitre.org/techniques/T1570/
+  - https://attack.mitre.org/techniques/T1021/004/

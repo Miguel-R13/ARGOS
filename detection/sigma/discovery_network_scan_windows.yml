@@ -1,0 +1,32 @@
+title: ARGOS - Network Port Scan Detected via Windows Firewall Block Events
+id: b4e2f9a1-7c3d-4e8b-a6f1-2d5c8e0b3a9f
+status: experimental
+description: >
+  Detects a potential port scan from an external IP by analyzing Windows
+  Filtering Platform blocked connection events (Event ID 5157). A high
+  volume of blocked inbound connections from the same source IP is a
+  strong indicator of active network reconnaissance (T1046 - Network
+  Service Discovery). Telemetry source: Windows Security Event Log via
+  Wazuh agent. No equivalent rule exists in SigmaHQ for this detection
+  vector. Validated empirically in ARGOS lab against nmap -sS -sV scan
+  from Kali Linux 192.168.234.40.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/11
+level: medium
+tags:
+  - attack.discovery
+  - attack.t1046
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 5157
+  condition: selection
+falsepositives:
+  - Legitimate network administrators scanning their own infrastructure
+  - Vulnerability scanners authorized in the environment
+  - Monitoring tools performing health checks against multiple ports
+references:
+  - https://attack.mitre.org/techniques/T1046/
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5157

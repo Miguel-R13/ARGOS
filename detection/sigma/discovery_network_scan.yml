@@ -1,0 +1,26 @@
+title: ARGOS - Network Port Scan Detected via UFW Block Events
+id: a3f7c821-4d9e-4b2a-8e1f-3c5d9f0e7a12
+status: experimental
+description: >
+  Detects a potential port scan from an external IP by analyzing mass UFW BLOCK
+  events within a short time window. A high volume of blocked connections from
+  the same source IP is a strong indicator of active network reconnaissance
+  (T1046 - Network Service Discovery). Telemetry source: /var/log/ufw.log
+  via Wazuh agent logcollector.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/07
+level: medium
+tags:
+  - attack.t1046
+logsource:
+  product: linux
+  service: ufw
+detection:
+  keywords:
+    - 'UFW BLOCK'
+  condition: keywords
+falsepositives:
+  - Legitimate network administrators scanning their own infrastructure
+  - Vulnerability scanners authorized in the environment
+references:
+  - https://attack.mitre.org/techniques/T1046/

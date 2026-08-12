@@ -1,0 +1,18 @@
+<group name="argos,reverse_shell,">
+
+  <!-- ARGOS Rule 100600: Reverse shell detection via connect() syscall -->
+  <!-- NEW: No equivalent built-in rule in Wazuh -->
+  <!-- Detects outbound connections from bash, python3, nc, perl -->
+  <!-- via auditd syscall connect monitoring with key argos_reverse_shell -->
+  <rule id="100600" level="13">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">argos_reverse_shell</field>
+    <field name="audit.success">yes</field>
+    <description>ARGOS: Reverse shell detected - $(audit.exe) established outbound connection (possible T1059.004)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>argos,reverse_shell,execution</group>
+  </rule>
+
+</group>

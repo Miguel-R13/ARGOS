@@ -1,0 +1,34 @@
+title: ARGOS - Security Services Disabled or Stopped
+id: 3e9f1b2a-7c4d-4e8f-b5a1-2d6c8e0f3b1a
+status: experimental
+description: >
+  Detects when critical security services are stopped or disabled on a
+  Linux endpoint. Covers auditd (kernel audit framework), wazuh-agent
+  (SIEM agent) and ufw (host firewall). An attacker with root privileges
+  may stop these services to blind the detection infrastructure before
+  executing malicious actions. Telemetry source: /var/log/syslog via
+  systemd service lifecycle events. No equivalent SigmaHQ rule exists
+  for Linux syslog-based detection of security service deactivation.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/26
+level: critical
+tags:
+  - attack.t1562.001
+  - attack.defense_evasion
+logsource:
+  product: linux
+  service: syslog
+detection:
+  keywords:
+    - 'auditd.service: Deactivated successfully'
+    - 'wazuh-agent.service: Deactivated successfully'
+    - 'ufw.service: Deactivated successfully'
+    - 'Stopped Uncomplicated firewall'
+    - 'Wazuh v4.9.2 Stopped'
+    - 'The audit daemon is exiting'
+  condition: keywords
+falsepositives:
+  - Legitimate system administrators stopping services for maintenance
+  - Planned system updates requiring service restart
+references:
+  - https://attack.mitre.org/techniques/T1562/001/

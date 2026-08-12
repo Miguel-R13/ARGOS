@@ -1,0 +1,30 @@
+title: ARGOS - SSH Lateral Movement Between Internal Endpoints
+id: b2e4f8a1-3c7d-4e9b-a5f2-8d1c6e0b4a7f
+status: experimental
+description: >
+  Detects successful SSH authentication between internal endpoints that
+  may indicate lateral movement. An attacker who has compromised one
+  internal host may use valid credentials to pivot to other systems via
+  SSH. Unlike external brute force (T1110), this technique uses valid
+  credentials and generates a successful authentication event.
+  Telemetry source: /var/log/auth.log via Wazuh agent.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/15
+level: medium
+tags:
+  - attack.t1021.004
+  - attack.t1078
+logsource:
+  product: linux
+  service: sshd
+detection:
+  keywords:
+    - 'Accepted password'
+    - 'Accepted publickey'
+  condition: keywords
+falsepositives:
+  - Legitimate administrators connecting via SSH for maintenance
+  - Automated scripts using SSH for configuration management
+references:
+  - https://attack.mitre.org/techniques/T1021/004/
+  - https://attack.mitre.org/techniques/T1078/

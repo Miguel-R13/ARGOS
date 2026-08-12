@@ -1,0 +1,37 @@
+<group name="argos,ssh_brute_force,">
+
+  <!-- ARGOS Rule 100100: SSH Brute Force - Classic (same source IP) -->
+  <!-- Tuning: threshold lowered from 8 to 5, removed ignore window -->
+  <!-- Covers both non-existent users (5710) and valid users (5760) -->
+  <rule id="100100" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>5710</if_matched_sid>
+    <same_source_ip />
+    <description>ARGOS: SSH brute force detected from $(srcip) - 5+ failed attempts with non-existent user in 2 minutes</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>argos,credential_access,brute_force</group>
+  </rule>
+
+  <rule id="100101" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>5760</if_matched_sid>
+    <same_source_ip />
+    <description>ARGOS: SSH brute force detected from $(srcip) - 5+ failed authentication attempts in 2 minutes</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>argos,credential_access,brute_force</group>
+  </rule>
+
+  <!-- ARGOS Rule 100102: SSH Distributed Brute Force (same target user) -->
+  <rule id="100102" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>5760</if_matched_sid>
+    <same_user />
+    <description>ARGOS: Distributed SSH brute force detected against user $(dstuser) - 5+ failed attempts from multiple IPs in 2 minutes</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>argos,credential_access,distributed_brute_force</group>
+  </rule>
+
+</group>

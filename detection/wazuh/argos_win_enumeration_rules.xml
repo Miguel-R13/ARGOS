@@ -1,0 +1,29 @@
+<group name="argos,discovery,">
+
+  <!-- ARGOS Rule 101300: Local user enumeration via net.exe/net1.exe -->
+  <!-- NEW: Wazuh native 92031/92033 detect at level 3 without T1087.001 context -->
+  <!-- if_sid 92033 added by Miguel: covers enumeration launched from PowerShell -->
+  <!-- Telemetry: Sysmon Event ID 1 (Process Creation) -->
+  <!-- Keywords invariantes: net.exe/net1.exe + user|localgroup|accounts -->
+  <!-- wmic useraccount not captured by SwiftOnSecurity config - documented gap -->
+  <rule id="101300" level="6">
+    <if_sid>92031, 92033</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)(net\.exe|net1\.exe)$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(user|localgroup|accounts)</field>
+    <description>ARGOS: Local user enumeration detected - $(win.eventdata.commandLine) executed by $(win.eventdata.user)</description>
+    <mitre><id>T1087.001</id></mitre>
+    <group>argos,discovery,user_enumeration</group>
+  </rule>
+
+  <!-- ARGOS Rule 101301: Multiple enumeration commands in short timeframe -->
+  <!-- Detects sustained reconnaissance pattern post-access -->
+  <!-- Tuning: 3 events in 60 seconds = active enumeration session -->
+  <rule id="101301" level="10" frequency="3" timeframe="60">
+    <if_matched_sid>101300</if_matched_sid>
+    <same_field>win.eventdata.user</same_field>
+    <description>ARGOS: Sustained user enumeration detected - multiple net commands by $(win.eventdata.user) in 60 seconds</description>
+    <mitre><id>T1087.001</id></mitre>
+    <group>argos,discovery,user_enumeration</group>
+  </rule>
+
+</group>

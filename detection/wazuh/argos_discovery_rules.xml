@@ -1,0 +1,31 @@
+<group name="argos,network_reconnaissance,">
+
+  <!-- ARGOS Rule 101100: Windows Firewall blocked connection - individual event -->
+  <!-- NEW: No equivalent built-in rule in Wazuh specific to port scan detection -->
+  <!-- Base rule for temporal correlation - captures each 5157 event individually -->
+  <!-- Telemetry: Windows Security Event Log, Event ID 5157 -->
+<rule id="101100" level="3">
+    <if_sid>60104</if_sid>
+    <field name="win.system.eventID">5157</field>
+    <field name="win.eventdata.destAddress" negate="yes">224.0.0.252</field>
+    <field name="win.eventdata.sourceAddress" negate="yes">^fe80:</field>
+    <field name="win.eventdata.sourceAddress" negate="yes">192.168.234.1</field>
+    <field name="win.eventdata.sourceAddress" negate="yes">192.168.91.</field>
+    <description>ARGOS: Windows Firewall blocked inbound connection from $(win.eventdata.sourceAddress) to port $(win.eventdata.destPort)</description>
+    <mitre><id>T1046</id></mitre>
+    <group>argos,network_reconnaissance,firewall_block</group>
+</rule>
+
+  <!-- ARGOS Rule 101101: Port scan detection - multiple blocked connections from same IP -->
+  <!-- NEW: No equivalent built-in rule in Wazuh for Windows port scan correlation -->
+  <!-- Tuning: 10 events in 60 seconds from same source IP = active reconnaissance -->
+  <!-- Threshold set empirically: legitimate traffic never hits 10 blocked ports in 60s -->
+  <rule id="101101" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>101100</if_matched_sid>
+    <same_field>win.eventdata.sourceAddress</same_field>
+    <description>ARGOS: Port scan detected from $(win.eventdata.sourceAddress) - 10+ Windows Firewall block events in 60 seconds</description>
+    <mitre><id>T1046</id></mitre>
+    <group>argos,network_reconnaissance,port_scan</group>
+  </rule>
+
+</group>

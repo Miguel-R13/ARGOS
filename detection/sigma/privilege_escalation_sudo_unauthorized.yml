@@ -1,0 +1,24 @@
+title: ARGOS - Unauthorized Sudo Attempt Detected
+id: 71c79e98-0941-4870-b5ce-3d133b56fc0f
+status: experimental
+description: >
+  Detects attempts to use sudo by users who are not in the sudoers file.
+  This indicates either a compromised account attempting privilege escalation
+  or an unauthorized user trying to gain root access.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/07/05
+level: critical
+tags:
+  - attack.t1548.003
+logsource:
+  product: linux
+  service: sudo
+detection:
+  keywords:
+    - 'NOT in sudoers'
+  condition: keywords
+falsepositives:
+  - Misconfigured automated scripts attempting sudo under non-privileged users
+  - Users unaware of their permission level attempting sudo commands
+references:
+  - https://attack.mitre.org/techniques/T1548/003/

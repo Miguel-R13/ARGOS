@@ -1,0 +1,14 @@
+<group name="argos,lateral_movement,">
+  <!-- ARGOS Rule 100500: SSH lateral movement detection -->
+  <!-- Tuning: built-in 5715 level 3 -> ARGOS 100500 level 10 -->
+  <rule id="100500" level="10">
+    <if_sid>5715</if_sid>
+    <description>ARGOS: Successful SSH authentication from $(srcip) - possible lateral movement</description>
+    <mitre>
+      <id>T1021.004</id>
+      <id>T1078</id>
+    </mitre>
+    <group>argos,lateral_movement,ssh_success</group>
+  </rule>
+
+</group>
