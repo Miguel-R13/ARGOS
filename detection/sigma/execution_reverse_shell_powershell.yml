@@ -1,0 +1,37 @@
+title: ARGOS - PowerShell Reverse Shell via TCPClient
+id: e5f2a3b1-9d4c-4f8a-c6b3-3e7d0b4a6c9e
+status: experimental
+description: >
+  Detects PowerShell reverse shell connections using the .NET TCPClient class.
+  Uses ScriptBlock Logging (Event ID 4104) which captures script content after
+  deobfuscation, making it invariant regardless of encoding technique.
+  Keywords TCPClient and GetStream are always present in any PowerShell reverse
+  shell regardless of obfuscation: Base64, string concatenation or any other
+  technique. Telemetry requires ScriptBlock Logging enabled via registry:
+  HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging.
+  Sysmon Event ID 3 (Network Connection) not captured by SwiftOnSecurity config
+  for PowerShell - documented as coverage gap.
+  Validated empirically in ARGOS lab using Nishang one-liner from Kali 192.168.234.40.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/13
+level: critical
+tags:
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  product: windows
+  service: powershell
+detection:
+  selection:
+    EventID: 4104
+    ScriptBlockText|contains|all:
+      - 'TCPClient'
+      - 'GetStream'
+  condition: selection
+falsepositives:
+  - Legitimate network connectivity testing scripts using TCPClient
+  - PowerShell modules performing legitimate TCP connections
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://github.com/samratashok/nishang/blob/master/Shells/Invoke-PowerShellTcpOneLine.ps1
+  - https://detection.fyi/sigmahq/sigma/windows/process_creation/proc_creation_win_powershell_reverse_shell_connection/

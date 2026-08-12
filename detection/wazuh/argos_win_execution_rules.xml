@@ -1,0 +1,17 @@
+<group name="argos,execution,">
+
+  <!-- ARGOS Rule 101500: PowerShell reverse shell via TCPClient -->
+  <!-- Detects PowerShell reverse shell via ScriptBlock Logging Event ID 4104 -->
+  <!-- if_sid 91837 confirmed empirically: rule that processes TCPClient events -->
+  <!-- TCPClient invariant regardless of obfuscation - captured post-deobfuscation -->
+  <rule id="101500" level="13">
+    <if_sid>91802</if_sid>
+    <field name="win.system.eventID">4104</field>
+    <field name="win.system.channel">Microsoft-Windows-PowerShell/Operational</field>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)TCPClient</field>
+    <description>ARGOS: PowerShell reverse shell detected via ScriptBlock Logging - TCPClient connection by $(win.eventdata.user)</description>
+    <mitre><id>T1059.001</id></mitre>
+    <group>argos,execution,reverse_shell,powershell</group>
+  </rule>
+
+</group>
