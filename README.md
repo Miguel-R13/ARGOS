@@ -12,7 +12,7 @@ IMMUNE × Universidad Nebrija × Banco Santander · 2025-2026
 
 Los SOC modernos generan más alertas de las que un analista puede procesar manualmente. El modelo clásico de L1 revisando cientos de eventos al día ya no escala, y las empresas están dejando de contratar perfiles que solo monitorizan para contratar perfiles que diseñan, supervisan y corrigen sistemas de detección automatizada.
 
-ARGOS es la respuesta práctica a ese problema: un SOC funcional donde **Wazuh** actúa como SIEM central, las reglas de detección se escriben siguiendo el estándar **Sigma** y se validan empíricamente sobre ataques reales en laboratorio, y un **LLM local (Ollama)** asiste al analista en el triaje sin que ningún dato abandone el entorno.
+ARGOS es la respuesta práctica a ese problema: un SOC funcional donde **Wazuh** actúa como SIEM central, las reglas de detección se escriben siguiendo el estándar **Sigma** y se validan empíricamente sobre ataques reales en laboratorio, y un **LLM local (Ollama)** asistirá al analista en el triaje sin que ningún dato abandone el entorno.
 
 El objetivo no es automatizar al analista. Es demostrar que un profesional capaz de construir, afinar y supervisar este sistema vale más que uno que solo lo opera.
 
@@ -20,28 +20,30 @@ El objetivo no es automatizar al analista. Es demostrar que un profesional capaz
 
 ## Qué hace
 
-- Detecta amenazas reales en endpoints Linux y Windows mediante reglas Sigma compiladas a Wazuh y reglas XML nativas, validadas empíricamente sobre 10 escenarios de ataque reales
+- Detecta amenazas reales en endpoints Linux y Windows mediante reglas Sigma compiladas a Wazuh y reglas XML nativas, validadas empíricamente sobre 16 escenarios de ataque reales (10 Linux + 6 Windows en curso)
+- Telemetría enriquecida en Windows via **Sysmon** (SwiftOnSecurity config), **ScriptBlock Logging** y **Security Event Log**
 - Alerta al analista vía Telegram para eventos de severidad alta y crítica, sin ruido
 - Enriquece cada alerta con contexto MITRE ATT&CK antes de presentarla
-- Triaje asistido por LLM local (Ollama / Mistral / LLaMA): severidad, TTP probable y acción sugerida, sin enviar datos a la nube
-- Responde automáticamente mediante playbooks SOAR en Python para las acciones de orquestación; las acciones de impacto activo requieren aprobación del analista (human-in-the-loop)
-- Analiza phishing integrando PhishGuard como módulo offline: veredicto CLEAN/SUSPICIOUS/MALICIOUS en menos de 1 segundo
+- Triaje asistido por LLM local (Ollama / Mistral / LLaMA): severidad, TTP probable y acción sugerida, sin enviar datos a la nube *(en desarrollo)*
+- Responde automáticamente mediante playbooks SOAR en Python para las acciones de orquestación; las acciones de impacto activo requieren aprobación del analista (human-in-the-loop) *(en desarrollo)*
+- Analiza phishing integrando PhishGuard como módulo offline: veredicto CLEAN/SUSPICIOUS/MALICIOUS en menos de 1 segundo *(en desarrollo)*
 
 ---
 
 ## Stack
 
 | Capa | Tecnología |
-|---|---|
-| SIEM | **Wazuh** + OpenSearch Dashboards |
-| Detección por comportamiento | Reglas **Sigma** (.yml) compiladas a XML via `sigma-cli` |
+| --- | --- |
+| SIEM | **Wazuh 4.9.2** + OpenSearch Dashboards |
+| Detección por comportamiento | Reglas **Sigma** (.yml) compiladas a OpenSearch via `sigma-cli` |
 | Detección nativa | Reglas **XML Wazuh** propias con tuning sobre reglas de la comunidad |
-| Detección de contenido | **YARA** |
-| Telemetría de kernel | **auditd** (Linux) |
-| Triaje IA | **Ollama** · Mistral 7B / LLaMA 3 8B, ejecución 100% local |
-| Automatización | **Python** · Playbooks SOAR |
-| Alertas | **Telegram** (severidad alta y crítica) |
-| Módulo de phishing | **PhishGuard**, análisis estático offline de .eml |
+| Detección de contenido | **YARA** *(en desarrollo)* |
+| Telemetría Linux | **auditd**, auth.log, ufw.log |
+| Telemetría Windows | **Sysmon** (SwiftOnSecurity), Security Event Log, ScriptBlock Logging (EID 4104) |
+| Triaje IA | **Ollama** · Mistral 7B / LLaMA 3 8B, ejecución 100% local *(en desarrollo)* |
+| Automatización | **Python** · Playbooks SOAR *(en desarrollo)* |
+| Alertas | **Telegram** (severidad alta y crítica) *(en desarrollo)* |
+| Módulo de phishing | **PhishGuard**, análisis estático offline de .eml *(en desarrollo)* |
 | Framework de detección | **MITRE ATT&CK** |
 | Framework de respuesta | **NIST** IR lifecycle |
 
@@ -49,93 +51,103 @@ El objetivo no es automatizar al analista. Es demostrar que un profesional capaz
 
 ## Motor de detección · Proceso de validación empírica
 
-Cada regla de ARGOS sigue un proceso estricto de 7 pasos. No se asume ningún campo ni keyword teórico: todo se valida sobre telemetría real antes de escribir una sola línea de regla.
+Cada regla de ARGOS sigue un proceso estricto de 9 puntos. No se asume ningún campo ni keyword teórico: todo se valida sobre telemetría real antes de escribir una sola línea de regla.
 
-**1. Simulación exploratoria previa**  
-Se ejecuta el ataque en el laboratorio y se analiza la telemetría real para identificar los keywords invariantes del escenario. Nunca se parte de documentación teórica.
-
-**2. Regla Sigma**  
-Con los keywords validados empíricamente se escribe la regla Sigma siguiendo la especificación SigmaHQ, se guarda en `/opt/argos/sigma/rules/`, se valida con `sigma check` y se compila con `sigma convert` guardando el resultado en `/opt/argos/sigma/compiled/`.
-
-**3. Regla XML Wazuh**  
-Se escribe la regla XML en `/var/ossec/etc/rules/`, se valida con `sudo /var/ossec/bin/wazuh-analysisd -t` y se aplica con `sudo systemctl restart wazuh-manager`.
-
-**4. Simulación de validación**  
-Se vuelve a ejecutar el ataque para confirmar que la regla dispara correctamente.
-
-**5. Verificación en alerts.log**  
-Se confirma la alerta en `/var/ossec/logs/alerts/alerts.log`.
-
-**6. Verificación en dashboard**  
-Se filtra por nivel de severidad en Threat Hunting, como lo haría un analista L1, nunca por `rule.id`.
-
-**7. Evidencia**  
-Screenshots de cada fase: ATK · TEL · LOG · DASH.
+1. **Contexto de la amenaza** - Que hace el atacante, que telemetria genera, que keywords son invariantes
+2. **Gap en herramientas nativas** - Que cubre Wazuh y SigmaHQ, que deja sin cubrir
+3. **Simulacion exploratoria previa** - Ataque real en laboratorio para descubrir keywords empiricamente
+4. **Regla Sigma** - Escrita con keywords validados, guardada en `/opt/argos/sigma/rules/`, validada con `sigma check`, compilada con `sigma convert`
+5. **Regla XML Wazuh** - Escrita en `/var/ossec/etc/rules/`, validada con `wazuh-analysisd -t`, aplicada con reinicio del manager
+6. **Simulacion de validacion** - Ataque de nuevo para confirmar que la regla dispara
+7. **Verificacion en alerts.log** - Confirmacion en `/var/ossec/logs/alerts/alerts.log`
+8. **Verificacion en dashboard** - Filtrado por nivel de severidad en Threat Hunting como lo haria un analista L1
+9. **Evidencia** - Screenshots de cada fase: ATK · TEL · LOG · DASH
 
 ---
 
 ## Escenarios de ataque validados
 
-Todos los escenarios están implementados sobre endpoint **Linux**. Endpoint **Windows** en desarrollo.
+### Bloque Linux · Endpoint 192.168.234.30
 
 | # | Escenario | TTP MITRE ATT&CK | Estado |
-|---|---|---|---|
-| 01 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
-| 02 | Fuerza bruta SSH | T1110 · Brute Force | ✅ |
-| 03 | Enumeración de usuarios | T1087.001 · Account Discovery | ✅ |
-| 04 | Escalada de privilegios con sudo | T1548.003 · Sudo and Sudo Caching | ✅ |
-| 05 | Reverse shell | T1059.004 · Command and Scripting Interpreter | ✅ |
-| 06 | Cron job malicioso | T1053.003 · Scheduled Task/Job: Cron | ✅ |
-| 07 | Movimiento lateral SSH | T1021.004 · Remote Services: SSH | ✅ |
-| 08 | Transferencia lateral SCP/SFTP | T1570 · Lateral Tool Transfer | ✅ |
-| 09 | Desactivación de herramientas de seguridad | T1562.001 · Impair Defenses | ✅ |
-| 10 | Exfiltración de datos vía curl/wget | T1041 + T1105 | ✅ |
+| --- | --- | --- | --- |
+| ESC01 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
+| ESC02 | Fuerza bruta SSH | T1110 · Brute Force | ✅ |
+| ESC03 | Enumeración de usuarios | T1087.001 · Account Discovery | ✅ |
+| ESC04 | Escalada de privilegios con sudo | T1548.003 · Sudo and Sudo Caching | ✅ |
+| ESC05 | Reverse shell bash | T1059.004 · Unix Shell | ✅ |
+| ESC06 | Cron job malicioso | T1053.003 · Scheduled Task: Cron | ✅ |
+| ESC07 | Movimiento lateral SSH | T1021.004 · Remote Services: SSH | ✅ |
+| ESC08 | Transferencia lateral SCP/SFTP | T1570 · Lateral Tool Transfer | ✅ |
+| ESC09 | Desactivación de herramientas de seguridad | T1562.001 · Impair Defenses | ✅ |
+| ESC10 | Exfiltración de datos via curl/wget | T1041 + T1105 | ✅ |
 
+### Bloque Windows · Endpoint 192.168.234.20
+
+| # | Escenario | TTP MITRE ATT&CK | Estado |
+| --- | --- | --- | --- |
+| ESC11 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
+| ESC12 | Fuerza bruta RDP | T1110 · Brute Force | ✅ |
+| ESC13 | Enumeración de usuarios Windows | T1087.001 · Account Discovery | ✅ |
+| ESC14 | Escalada de privilegios UAC bypass fodhelper | T1548.002 · Bypass UAC | ✅ |
+| ESC15 | Reverse shell PowerShell | T1059.001 · PowerShell | ✅ |
+| ESC16 | Persistencia via tareas programadas | T1053.005 · Scheduled Task | ✅ |
+| ESC17 | Movimiento lateral SMB/WMI | T1021.002 · SMB/Windows Admin Shares | 🔨 |
+| ESC18 | Transferencia lateral via SMB | T1570 · Lateral Tool Transfer | 🔨 |
+| ESC19 | Desactivación Defender/Wazuh | T1562.001 · Impair Defenses | 🔨 |
+| ESC20 | Exfiltración via PowerShell/certutil | T1041 · Exfiltration Over C2 | 🔨 |
+| ESC21 | Credential dumping LSASS/SAM | T1003.001 · LSASS Memory | 🔨 |
+| ESC22 | Pass the Hash | T1550.002 · Pass the Hash | 🔨 |
+| ESC23 | LOLBAS: certutil, regsvr32, mshta | T1218 · System Binary Proxy Execution | 🔨 |
+| ESC24 | PowerShell obfuscado | T1027 · Obfuscated Files or Information | 🔨 |
 
 ---
 
 ## Estado y roadmap
 
 | Componente | Estado |
-|---|---|
-| Wazuh SIEM + OpenSearch + agentes | ✅ Implementado |
-| Reglas Sigma (.yml) · 10 escenarios | ✅ Implementado |
-| Reglas XML Wazuh · 10 escenarios | ✅ Implementado |
-| Endpoint Linux | ✅ Implementado |
-| Alertas Telegram (severidad alta/crítica) | 🔨 En desarrollo |
+| --- | --- |
+| Wazuh 4.9.2 + OpenSearch + agentes | ✅ Implementado |
+| Sysmon (SwiftOnSecurity) en endpoint Windows | ✅ Implementado |
+| ScriptBlock Logging en endpoint Windows | ✅ Implementado |
+| Reglas Sigma · 26 reglas (10 Linux + 16 Windows) | ✅ Implementado |
+| Reglas XML Wazuh · bloque Linux completo | ✅ Implementado |
+| Reglas XML Wazuh · bloque Windows ESC11-ESC16 | ✅ Implementado |
+| Bloque Linux ESC01-ESC10 | ✅ Completado |
+| Bloque Windows ESC11-ESC16 | ✅ Completado |
+| Bloque Windows ESC17-ESC24 | 🔨 En desarrollo |
 | Reglas YARA | 🔨 En desarrollo |
-| Endpoint Windows | 🔨 En desarrollo |
 | Playbooks SOAR en Python | 🔨 En desarrollo |
 | Triaje con LLM local (Ollama) | 🔨 En desarrollo |
+| Alertas Telegram | 🔨 En desarrollo |
 | Dashboard de supervisión humana | 🔨 En desarrollo |
 | Integración PhishGuard | 🔨 En desarrollo |
 | Evaluación cuantitativa (MTTD · MTTR · precisión LLM) | 📅 Pendiente |
-| Release público completo | 📅 Q3 2026 |
+| Release público completo | 📅 Q4 2026 |
 
 ---
 
 ## Estructura del repositorio
 
-```
 ARGOS/
 ├── detection/
-│   ├── sigma/          # Reglas Sigma (.yml) · estándar SigmaHQ
-│   ├── wazuh/          # Reglas XML Wazuh compiladas y validadas
-│   └── yara/           # Reglas YARA (en desarrollo)
+│ ├── sigma/ # Reglas Sigma (.yml) · estándar SigmaHQ · Linux + Windows
+│ ├── wazuh/ # Reglas XML Wazuh validadas · Linux + Windows
+│ └── yara/ # Reglas YARA (en desarrollo)
 ├── soar/
-│   └── playbooks/      # Playbooks SOAR en Python (en desarrollo)
-├── dashboard/          # Dashboard de supervisión humana (en desarrollo)
+│ └── playbooks/ # Playbooks SOAR en Python (en desarrollo)
+├── dashboard/ # Dashboard de supervisión humana (en desarrollo)
 ├── docs/
-│   └── architecture/   # Diagramas de arquitectura
+│ └── architecture/ # Diagramas de arquitectura
 └── README.md
-```
 
 ---
 
 ## Requisitos
 
-- Wazuh Server 4.x + agente Linux o Windows
+- Wazuh Server 4.9.2 + agente Linux o Windows
 - OpenSearch + OpenSearch Dashboards
+- Sysmon v15+ con configuración SwiftOnSecurity (endpoints Windows)
 - Python 3.10+
 - sigma-cli (para compilar reglas Sigma)
 - Ollama con Mistral 7B o LLaMA 3 8B *(módulo de triaje, en desarrollo)*
