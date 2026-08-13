@@ -1,0 +1,39 @@
+title: ARGOS - Lateral Movement via SMB and PsExec
+id: b2c4d6e8-1f3a-4b7c-9d2e-5f8a1b4c7d0e
+status: experimental
+description: >
+  Detects lateral movement via SMB using PsExec or impacket-psexec technique.
+  Attacker uses valid credentials to connect remotely via SMB (ADMIN$),
+  uploads a service binary and executes it as SYSTEM.
+  Three detection layers: NTLM remote logon (EID 4624 LogonType 3),
+  service creation from Admin Shares (Sysmon EID 1 + registry), and
+  temporal correlation of both events from same source IP.
+  Validated empirically in ARGOS lab using impacket-psexec from Kali
+  192.168.234.40 against Windows 10 Pro 192.168.234.20 with credentials
+  Analista:Analista compromised in ESC12.
+  Wazuh native rules 92652 and 92650 detect individual steps.
+  ARGOS adds T1021.002 context and kill chain correlation.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/13
+level: high
+tags:
+  - attack.lateral_movement
+  - attack.t1021.002
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4624
+    LogonType: 3
+    AuthenticationPackageName: NTLM
+  filter:
+    TargetUserName|endswith: '$'
+  condition: selection and not filter
+falsepositives:
+  - Legitimate remote administration via SMB with NTLM authentication
+  - Backup agents connecting remotely
+  - Monitoring tools using NTLM for remote access
+references:
+  - https://attack.mitre.org/techniques/T1021/002/
+  - https://github.com/fortra/impacket

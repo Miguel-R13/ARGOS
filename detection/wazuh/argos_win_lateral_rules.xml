@@ -1,0 +1,40 @@
+<group name="argos,lateral_movement,">
+
+  <!-- ARGOS Rule 101700: Remote NTLM logon - lateral movement base event -->
+  <!-- Wazuh native 92652 detects at level 6 without T1021.002 context -->
+  <!-- ARGOS elevates to level 10 with kill chain context -->
+  <!-- Telemetry: Security Event Log, Event ID 4624, LogonType 3, NTLM -->
+  <rule id="101700" level="10">
+    <if_sid>92652</if_sid>
+    <field name="win.system.eventID">4624</field>
+    <field name="win.eventdata.logonType">3</field>
+    <field name="win.eventdata.authenticationPackageName">NTLM</field>
+    <description>ARGOS: Remote NTLM logon detected - lateral movement via SMB from $(win.eventdata.ipAddress) - user $(win.eventdata.targetUserName)</description>
+    <mitre><id>T1021.002</id></mitre>
+    <group>argos,lateral_movement,smb</group>
+  </rule>
+
+  <!-- ARGOS Rule 101701: Service created via Admin Shares - psexec indicator -->
+  <!-- Wazuh native 92650 detects at level 12 without T1021.002 context -->
+  <!-- ARGOS adds lateral movement context and kill chain correlation base -->
+  <!-- Binary dropped in Windows root via ADMIN$ is the psexec invariant -->
+  <rule id="101701" level="12">
+    <if_sid>92650</if_sid>
+    <description>ARGOS: Service binary dropped via Admin Shares - psexec lateral movement indicator on $(agent.name)</description>
+    <mitre><id>T1021.002</id></mitre>
+    <group>argos,lateral_movement,smb,psexec</group>
+  </rule>
+
+  <!-- ARGOS Rule 101702: Lateral movement confirmed - NTLM logon + service creation -->
+  <!-- Correlates remote NTLM logon (101700) with service creation (101701) -->
+  <!-- Confirms full psexec kill chain: authenticate + upload + execute -->
+  <!-- timeframe 120s covers typical psexec execution sequence -->
+  <rule id="101702" level="14" frequency="2" timeframe="120">
+    <if_matched_sid>101700</if_matched_sid>
+    <if_sid>101701</if_sid>
+    <description>ARGOS: Lateral movement via psexec confirmed - remote NTLM logon followed by service creation on $(agent.name)</description>
+    <mitre><id>T1021.002</id></mitre>
+    <group>argos,lateral_movement,smb,psexec,confirmed</group>
+  </rule>
+
+</group>
