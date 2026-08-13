@@ -1,0 +1,42 @@
+title: ARGOS - Lateral Tool Transfer via SMB Admin Shares
+id: c3d5e7f9-2a4b-4c8d-a7e3-6f9b2c5d8e1f
+status: experimental
+description: >
+  Detects lateral tool transfer via SMB Admin Shares (ADMIN$).
+  When an attacker uploads an executable to ADMIN$, Windows maps it
+  to C:\Windows\ and the System process creates the file.
+  Sysmon Event ID 11 (File Created) with Image:System and targetFilename
+  in C:\Windows\ with .exe extension is the invariant keyword.
+  Security Event ID 5140 (network share access) confirms ADMIN$ access
+  but does not capture the filename. Event ID 5145 (detailed share access)
+  was not captured in ARGOS lab due to SACL configuration requirements.
+  Wazuh native rule 92217 detects at level 6 without T1570 context.
+  ARGOS elevates to level 10 with lateral movement kill chain context.
+  Validated empirically using smbclient from Kali 192.168.234.40
+  transferring tool.exe to ADMIN$ of Windows 10 Pro 192.168.234.20.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/13
+level: high
+tags:
+  - attack.lateral_movement
+  - attack.t1570
+logsource:
+  product: windows
+  category: file_event
+detection:
+  selection:
+    Image|endswith: '\System'
+    TargetFilename|startswith: 'C:\Windows\'
+    TargetFilename|endswith:
+      - '.exe'
+      - '.dll'
+      - '.bat'
+      - '.ps1'
+  condition: selection
+falsepositives:
+  - Windows Update dropping legitimate executables in C:\Windows\
+  - Legitimate software installers using admin shares
+  - System processes creating files during updates
+references:
+  - https://attack.mitre.org/techniques/T1570/
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5145

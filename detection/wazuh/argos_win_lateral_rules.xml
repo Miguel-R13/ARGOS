@@ -37,4 +37,26 @@
     <group>argos,lateral_movement,smb,psexec,confirmed</group>
   </rule>
 
+<!-- ARGOS Rule 101799: Base rule for Sysmon EID 11 by System process -->
+  <!-- Intermediate rule to enable parent chain for 101800 -->
+<rule id="101799" level="0">
+    <decoded_as>windows_eventchannel</decoded_as>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.system.channel">Microsoft-Windows-Sysmon/Operational</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)^System$</field>
+    <options>no_full_log</options>
+    <description>Sysmon EID 11 FileCreate by System process - base rule</description>
+  </rule>
+
+  <!-- ARGOS Rule 101800: Lateral tool transfer via SMB Admin Shares -->
+  <!-- Invariant: System process creating .exe in C:\Windows\ via ADMIN$ -->
+  <!-- Telemetry: Sysmon Event ID 11 (File Created) -->
+  <rule id="101800" level="10">
+    <if_sid>101799</if_sid>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)C:\\Windows\\.*\.(exe|dll|bat|ps1)$</field>
+    <description>ARGOS: Lateral tool transfer - executable dropped in C:\Windows\ by System process via SMB Admin Shares</description>
+    <mitre><id>T1570</id></mitre>
+    <group>argos,lateral_movement,smb,tool_transfer</group>
+  </rule>
+
 </group>
