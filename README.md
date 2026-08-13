@@ -2,8 +2,17 @@
 
 > *"La IA propone. El analista decide. ARGOS documenta por qué importa la diferencia."*
 
-**XDR open source con supervisión humana del modelo**, construido desde cero sobre Wazuh.  
-No es un Wazuh instalado. Es un sistema de detección donde cada regla nació de un ataque real, cada gap fue identificado por un analista y cada corrección está documentada.
+XDR open source con supervisión humana del modelo, construido desde cero sobre Wazuh.
+
+No es un Wazuh instalado con las reglas por defecto. Es un sistema donde cada regla de detección nació de un ataque real ejecutado en laboratorio, cada gap en herramientas de referencia como SigmaHQ fue identificado por un analista y cubierto con detección original propia, y cada corrección técnica sobre las propuestas de la IA está documentada con criterio profesional SOC.
+
+Lo que diferencia a ARGOS:
+
+- **Detección original, no heredada.** Se parte de SigmaHQ para identificar lo que falta, no para copiar lo que existe. Cada regla Sigma y XML se construye desde cero con keywords validados empíricamente sobre telemetría real.
+- **Ningún campo se asume.** El ataque se simula primero, se analiza la telemetría, y solo entonces se escribe la regla. Nunca al revés.
+- **Human-in-the-loop documentado.** El analista no solo supervisa alertas: supervisa la lógica de detección, identifica sus gaps y aprueba las acciones de respuesta. Hay una sección de Tuning de IA en la memoria del proyecto que registra cada corrección técnica que el criterio profesional hace sobre la herramienta.
+- **Kill chain completa, no escenarios aislados.** 24 escenarios organizados en dos bloques de kill chain real: Linux (ESC01-ESC10) y Windows (ESC11-ESC24), desde el reconocimiento hasta la exfiltración y el credential dumping.
+- **Evidencia de cada paso.** Cada escenario tiene capturas del ataque, la telemetría, el alerts.log y el dashboard. No hay nada que no esté validado.
 
 Trabajo de Fin de Máster · IMMUNE × Universidad Nebrija × Banco Santander · 2025-2026  
 🔨 En desarrollo activo
