@@ -1,4 +1,4 @@
-# ARGOS · Augmented Response and Guidance Operations System
+# ARGOS · AI-Augmented SOC Detection & Response Platform
 
 > *"La IA propone. El analista decide. ARGOS documenta por qué importa la diferencia."*
 
