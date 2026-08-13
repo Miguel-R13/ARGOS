@@ -1,0 +1,43 @@
+<group name="argos,persistence,">
+
+  <!-- ARGOS Rule 101600: Scheduled task creation via schtasks.exe -->
+  <!-- NEW: No Wazuh native rule processes schtasks.exe via Sysmon EID 1 -->
+  <!-- Direct detection without if_sid - confirmed via wazuh-logtest -->
+  <!-- Telemetry: Sysmon Event ID 1 (Process Creation) -->
+  <!-- Also covers ScriptBlock Logging EID 4104 via if_sid 91802 in rule 101601 -->
+  <rule id="101600" level="10">
+    <field name="win.system.eventID">1</field>
+    <field name="win.system.channel">Microsoft-Windows-Sysmon/Operational</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)schtasks\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)/create</field>
+    <description>ARGOS: Scheduled task created via schtasks.exe by $(win.eventdata.user) - $(win.eventdata.commandLine)</description>
+    <mitre><id>T1053.005</id></mitre>
+    <group>argos,persistence,scheduled_task</group>
+  </rule>
+
+  <!-- ARGOS Rule 101601: Scheduled task creation via ScriptBlock Logging -->
+  <!-- Covers schtasks /create executed within PowerShell scripts -->
+  <!-- Complementary to 101600: captures PowerShell-based schtasks execution -->
+  <rule id="101601" level="10">
+    <if_sid>91802</if_sid>
+    <field name="win.system.eventID">4104</field>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)schtasks.*\/create</field>
+    <description>ARGOS: Scheduled task created via PowerShell ScriptBlock - $(win.eventdata.scriptBlockText)</description>
+    <mitre><id>T1053.005</id></mitre>
+    <group>argos,persistence,scheduled_task,powershell</group>
+  </rule>
+
+<!-- ARGOS Rule 101602: Scheduled task creation via Security Event ID 4698 -->
+  <!-- Covers ALL vectors: PowerShell, cmd.exe, WMI, any context -->
+  <!-- Gap closed: 101600 (Sysmon) and 101601 (ScriptBlock) miss cmd.exe vector -->
+  <!-- Wazuh native 60228 detects at level 4 without T1053.005 context -->
+  <!-- Telemetry: Security channel, Event ID 4698, field taskContent -->
+  <rule id="101602" level="10">
+    <if_sid>60228</if_sid>
+    <field name="win.system.eventID">4698</field>
+    <description>ARGOS: Scheduled task created - $(win.eventdata.taskName) by $(win.eventdata.subjectUserName)</description>
+    <mitre><id>T1053.005</id></mitre>
+    <group>argos,persistence,scheduled_task</group>
+  </rule>
+
+</group>

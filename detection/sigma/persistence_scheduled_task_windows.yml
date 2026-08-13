@@ -1,0 +1,69 @@
+title: ARGOS - Malicious Scheduled Task Creation via Schtasks
+id: f6a3b2c1-7e4d-4f9b-b8a3-4e8f1c2d5b7e
+status: experimental
+description: >
+  Detects creation of scheduled tasks via schtasks.exe as a persistence
+  mechanism. Covers three detection layers validated empirically in ARGOS lab:
+  1) Sysmon Event ID 1 (process_creation): schtasks.exe with /create argument.
+     Works in logtest but not always in production due to Wazuh pipeline.
+  2) ScriptBlock Logging Event ID 4104: schtasks /create within PowerShell scripts.
+     Confirmed working in production when launched from PowerShell.
+  3) Security Event ID 4698: task creation audit event, covers ALL vectors
+     including cmd.exe, PowerShell, WMI. Most reliable and comprehensive.
+  Validated empirically in ARGOS lab on Windows 10 Pro 192.168.234.20.
+  Requires auditpol: Otros eventos de acceso a objetos - success enabled.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/13
+level: high
+tags:
+  - attack.persistence
+  - attack.t1053.005
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\schtasks.exe'
+    CommandLine|contains: '/create'
+  condition: selection
+falsepositives:
+  - Legitimate software installation creating scheduled tasks
+  - System administrators creating maintenance tasks
+  - Windows Update creating its own scheduled tasks
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/schtasks-create
+---
+title: ARGOS - Scheduled Task Creation via Security Audit Event 4698
+id: a7b3c2d1-9e5f-4a8c-b6d4-5f9e2a1c3b6d
+status: experimental
+description: >
+  Detects scheduled task creation via Windows Security Event ID 4698.
+  This is the most comprehensive detection vector: covers ALL execution
+  contexts (PowerShell, cmd.exe, WMI, scripts) regardless of how schtasks
+  was invoked. Field taskContent contains full XML of the task including
+  command, trigger and user context.
+  Requires auditpol subcategory "Otros eventos de acceso a objetos" enabled.
+  Validated empirically in ARGOS lab - confirmed working in production.
+  Wazuh native rule 60228 detects at level 4 without T1053.005 context.
+  ARGOS rule 101602 elevates to level 10 with MITRE mapping.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/13
+level: high
+tags:
+  - attack.persistence
+  - attack.t1053.005
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4698
+  condition: selection
+falsepositives:
+  - Legitimate software installation creating scheduled tasks
+  - System administrators creating maintenance tasks
+  - Windows Update and system tasks
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4698
