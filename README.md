@@ -47,9 +47,9 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 
 ## Arquitectura
 
-┌─────────────────────────────┐
-                │     ARGOS · Wazuh Server     │
-                │     192.168.234.10           │
+                ┌─────────────────────────────┐
+                │     ARGOS · Wazuh Server    │
+                │     192.168.234.10          │
                 │                             │
                 │  OpenSearch + Dashboards    │
                 │  Reglas Sigma propias       │
