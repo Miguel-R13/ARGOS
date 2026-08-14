@@ -6,14 +6,15 @@
   <!-- Telemetry: Sysmon Event ID 1 (Process Creation) -->
   <!-- Keywords invariantes: net.exe/net1.exe + user|localgroup|accounts -->
   <!-- wmic useraccount not captured by SwiftOnSecurity config - documented gap -->
-  <rule id="101300" level="6">
+<rule id="101300" level="6">
     <if_sid>92031, 92033</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)(net\.exe|net1\.exe)$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(user|localgroup|accounts)</field>
+    <field name="win.eventdata.parentImage" negate="yes" type="pcre2">(?i)wazuh-agent\.exe$</field>
     <description>ARGOS: Local user enumeration detected - $(win.eventdata.commandLine) executed by $(win.eventdata.user)</description>
     <mitre><id>T1087.001</id></mitre>
     <group>argos,discovery,user_enumeration</group>
-  </rule>
+</rule>
 
   <!-- ARGOS Rule 101301: Multiple enumeration commands in short timeframe -->
   <!-- Detects sustained reconnaissance pattern post-access -->

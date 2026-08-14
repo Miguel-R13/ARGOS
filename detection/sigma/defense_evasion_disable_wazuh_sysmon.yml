@@ -1,0 +1,42 @@
+title: ARGOS - Security Tools Disabled via PowerShell (Wazuh Agent and Sysmon)
+id: e9f4a2b8-3c7d-4e8f-a1b5-6d9e2f5c8b3a
+status: experimental
+description: >
+  Detects stopping of critical security monitoring tools via PowerShell.
+  Covers Wazuh agent (WazuhSvc) and Sysmon service stop commands.
+  ScriptBlock Logging (Event ID 4104) captures the command post-deobfuscation,
+  making detection invariant regardless of encoding technique.
+  Wazuh agent stop: endpoint becomes completely blind to SIEM.
+  Sysmon stop: process, network and registry telemetry lost.
+  Both are critical defense evasion indicators before credential dumping
+  or other destructive post-exploitation activities.
+  Complementary detection: Wazuh native rule 506 detects agent stop
+  at level 3. ARGOS rule 101902 elevates to level 14.
+  Validated empirically in ARGOS lab on Windows 10 Pro 192.168.234.20.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/14
+level: critical
+tags:
+  - attack.defense_evasion
+  - attack.t1562.001
+logsource:
+  product: windows
+  service: powershell
+detection:
+  selection_wazuh:
+    EventID: 4104
+    ScriptBlockText|contains|all:
+      - 'Stop-Service'
+      - 'WazuhSvc'
+  selection_sysmon:
+    EventID: 4104
+    ScriptBlockText|contains|all:
+      - 'Stop-Service'
+      - 'Sysmon'
+  condition: selection_wazuh or selection_sysmon
+falsepositives:
+  - Legitimate system administrators stopping services for maintenance
+  - Wazuh agent updates requiring service restart
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://docs.wazuh.com/current/user-manual/agent/agent-management.html

@@ -1,0 +1,70 @@
+<group name="argos,defense_evasion,">
+
+  <!-- ARGOS Rule 101900: Windows Defender real-time protection disabled -->
+  <!-- Wazuh native 62152 detects at level 5 without T1562.001 context -->
+  <!-- ARGOS elevates to level 12 with defense evasion kill chain context -->
+  <!-- Telemetry: Microsoft-Windows-Windows Defender/Operational, Event ID 5001 -->
+  <!-- Note: Tamper Protection prevents programmatic disabling in Windows 10 -->
+  <!-- Manual GUI interaction or bypass required in modern environments -->
+  <rule id="101900" level="12">
+    <if_sid>62152</if_sid>
+    <field name="win.system.eventID">5001</field>
+    <description>ARGOS: Windows Defender real-time protection disabled - defense evasion detected on $(agent.name)</description>
+    <mitre><id>T1562.001</id></mitre>
+    <group>argos,defense_evasion,defender_disabled</group>
+  </rule>
+
+  <!-- ARGOS Rule 101901: Windows Defender real-time protection re-enabled -->
+  <!-- Detects when attacker re-enables Defender after malicious activity -->
+  <!-- to avoid raising suspicion - covers cleanup phase of attack -->
+  <rule id="101901" level="6">
+    <if_sid>62151</if_sid>
+    <field name="win.system.eventID">5000</field>
+    <description>ARGOS: Windows Defender real-time protection re-enabled - possible post-attack cleanup on $(agent.name)</description>
+    <mitre><id>T1562.001</id></mitre>
+    <group>argos,defense_evasion,defender_enabled</group>
+  </rule>
+
+<!-- ARGOS Rule 101902: Wazuh agent stopped - critical defense evasion -->
+  <!-- Wazuh native 506 detects at level 3 without T1562.001 context -->
+  <!-- Stopping the agent blinds the SIEM completely - highest priority -->
+  <rule id="101902" level="14">
+    <if_sid>506</if_sid>
+    <description>ARGOS: Wazuh agent stopped - endpoint telemetry lost, SIEM blinded on $(agent.name)</description>
+    <mitre><id>T1562.001</id></mitre>
+    <group>argos,defense_evasion,agent_stopped</group>
+  </rule>
+
+  <!-- ARGOS Rule 101903: Wazuh agent restarted after stop -->
+  <!-- Possible attacker restarted agent after malicious activity to avoid detection -->
+  <rule id="101903" level="6">
+    <if_sid>503</if_sid>
+    <description>ARGOS: Wazuh agent restarted - possible post-attack cleanup on $(agent.name)</description>
+    <mitre><id>T1562.001</id></mitre>
+    <group>argos,defense_evasion,agent_started</group>
+  </rule>
+
+<!-- ARGOS Rule 101904: Sysmon service stopped - critical telemetry loss -->
+  <!-- Stopping Sysmon blinds process, network and registry telemetry -->
+  <!-- Detectable via ScriptBlock Logging if executed from PowerShell -->
+  <rule id="101904" level="14">
+    <if_sid>91802</if_sid>
+    <field name="win.system.eventID">4104</field>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(Stop-Service|sc\s+stop).*(Sysmon)</field>
+    <description>ARGOS: Sysmon service stop detected via PowerShell - critical telemetry evasion on $(agent.name)</description>
+    <mitre><id>T1562.001</id></mitre>
+    <group>argos,defense_evasion,sysmon_stopped</group>
+  </rule>
+
+  <!-- ARGOS Rule 101905: WazuhSvc stopped via PowerShell -->
+  <!-- Complements 101902: catches PowerShell-based agent stop before agent goes offline -->
+  <rule id="101905" level="14">
+    <if_sid>91802</if_sid>
+    <field name="win.system.eventID">4104</field>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(Stop-Service|sc\s+stop).*(WazuhSvc|wazuh)</field>
+    <description>ARGOS: Wazuh agent stop detected via PowerShell before going offline on $(agent.name)</description>
+    <mitre><id>T1562.001</id></mitre>
+    <group>argos,defense_evasion,agent_stopped,powershell</group>
+  </rule>
+
+</group>
