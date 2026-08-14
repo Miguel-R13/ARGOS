@@ -1,0 +1,36 @@
+title: ARGOS - Windows Defender Real-Time Protection Disabled
+id: d7e2f4a3-8b5c-4f9d-c8e4-7a0c3d6e9f2a
+status: experimental
+description: >
+  Detects disabling of Windows Defender real-time protection.
+  Event ID 5001 is generated when real-time protection is disabled
+  via GUI, PowerShell Set-MpPreference or registry modification.
+  This is a critical defense evasion indicator: attackers disable
+  Defender before executing tools like mimikatz or psexec that
+  would otherwise be detected and blocked.
+  Note: Tamper Protection in Windows 10 prevents programmatic
+  disabling via Set-MpPreference or registry. Manual GUI interaction
+  or Tamper Protection bypass required in modern environments.
+  Telemetry: Microsoft-Windows-Windows Defender/Operational channel.
+  Wazuh native rule 62152 detects at level 5 without T1562.001 context.
+  ARGOS elevates to level 12 with kill chain context.
+  Validated empirically in ARGOS lab on Windows 10 Pro 192.168.234.20.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/14
+level: high
+tags:
+  - attack.defense_evasion
+  - attack.t1562.001
+logsource:
+  product: windows
+  service: windefend
+detection:
+  selection:
+    EventID: 5001
+  condition: selection
+falsepositives:
+  - Legitimate system administrators disabling protection for maintenance
+  - Software deployment requiring temporary Defender exclusion
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/troubleshoot-microsoft-defender-antivirus
