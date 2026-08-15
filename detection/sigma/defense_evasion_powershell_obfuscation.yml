@@ -1,0 +1,39 @@
+title: ARGOS - PowerShell Obfuscation and AMSI Bypass Detection
+id: e1f3a5b7-2c4d-4e8f-b6d1-7a9c2e4f8b3d
+status: experimental
+description: >
+  Detects PowerShell obfuscation techniques via two universal layers.
+  Layer 1 - Sysmon EID 1: EncodedCommand argument in powershell.exe CommandLine.
+  Any Base64 encoded payload uses -EncodedCommand or -Enc flag.
+  Layer 2 - ScriptBlock Logging EID 4104: captures script content POST-deobfuscation.
+  This is the universal invariant layer: regardless of obfuscation technique
+  (Base64, string concatenation, character substitution, SecureString),
+  EID 4104 always captures the deobfuscated content before execution.
+  Covers AMSI bypass techniques: AmsiUtils, amsiInitFailed, [Ref].Assembly.GetType.
+  Covers download cradles: IEX + DownloadString, Invoke-Expression + WebClient.
+  Same principle as ESC15 (TCPClient): detection post-deobfuscation is invariant.
+  Validated empirically in ARGOS lab on Windows 10 Pro 192.168.234.20.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/15
+level: high
+tags:
+  - attack.defense_evasion
+  - attack.t1027
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_encoded:
+    Image|endswith: '\powershell.exe'
+    CommandLine|contains:
+      - '-EncodedCommand'
+      - '-Enc '
+      - '-ec '
+  condition: selection_encoded
+falsepositives:
+  - Legitimate software using encoded PowerShell commands
+  - System management tools using encoded commands
+  - SCCM and other deployment tools
+references:
+  - https://attack.mitre.org/techniques/T1027/
+  - https://github.com/danielbohannon/Invoke-Obfuscation
