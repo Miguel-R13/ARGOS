@@ -1,0 +1,47 @@
+title: ARGOS - LOLBAS Network Activity and Suspicious Child Process
+id: f2a4c6e8-1b3d-4f7a-d9e2-5c8b1a3f6e9d
+status: experimental
+description: >
+  Detects LOLBAS (Living off the Land Binaries) used for proxy execution
+  and network activity. Three detection layers:
+  1) Sysmon EID 3 (NetworkConnect): LOLBAS binaries making network connections.
+     Covers regsvr32, mshta, msiexec, rundll32, wmic, cmstp and others.
+  2) Sysmon EID 1 (ProcessCreate): cmd.exe or powershell.exe spawned by LOLBAS.
+     Parent-child relationship indicates proxy execution.
+  3) CommandLine with URLs: LOLBAS with HTTP/HTTPS/FTP in CommandLine.
+  SwiftOnSecurity config monitors network connections from LOLBAS via EID 3.
+  if_group sysmon_event3 confirmed in Wazuh 4.9.2 ruleset.
+  Wazuh has no native rules for LOLBAS network activity.
+  Validated empirically in ARGOS lab on Windows 10 Pro 192.168.234.20.
+author: ARGOS SOC - Miguel Reguero
+date: 2026/08/15
+level: high
+tags:
+  - attack.execution
+  - attack.defense_evasion
+  - attack.t1218
+logsource:
+  product: windows
+  category: network_connection
+detection:
+  selection:
+    Image|endswith:
+      - '\regsvr32.exe'
+      - '\mshta.exe'
+      - '\msiexec.exe'
+      - '\rundll32.exe'
+      - '\wmic.exe'
+      - '\cmstp.exe'
+      - '\msbuild.exe'
+      - '\installutil.exe'
+      - '\cscript.exe'
+      - '\wscript.exe'
+    Initiated: 'true'
+  condition: selection
+falsepositives:
+  - Legitimate software installation using msiexec
+  - Legitimate use of wmic for remote management
+  - Software updates using mshta
+references:
+  - https://attack.mitre.org/techniques/T1218/
+  - https://lolbas-project.github.io/
