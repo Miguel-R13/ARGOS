@@ -1,0 +1,41 @@
+<group name="argos,execution,defense_evasion,">
+
+  <!-- ARGOS Rule 102300: LOLBAS network connection - Sysmon EID 3 -->
+  <!-- Covers regsvr32, mshta, msiexec, rundll32, wmic, cmstp, msbuild -->
+  <!-- SwiftOnSecurity monitors these via NetworkConnect include rules -->
+  <!-- if_group sysmon_event3: Sysmon EID 3 processing chain -->
+  <!-- Wazuh has no native rule for LOLBAS network activity -->
+  <rule id="102300" level="10">
+    <if_group>sysmon_event3</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)(regsvr32|mshta|msiexec|rundll32|wmic|cmstp|msbuild|installutil|cscript|wscript)\.exe$</field>
+    <field name="win.eventdata.initiated">true</field>
+    <description>ARGOS: LOLBAS network connection detected - $(win.eventdata.image) connecting to $(win.eventdata.destinationIp):$(win.eventdata.destinationPort)</description>
+    <mitre><id>T1218</id></mitre>
+    <group>argos,execution,lolbas,network</group>
+  </rule>
+
+  <!-- ARGOS Rule 102301: Suspicious child process spawned by LOLBAS -->
+  <!-- cmd.exe or powershell.exe spawned by LOLBAS = proxy execution -->
+  <!-- if_group sysmon_event1: Sysmon EID 1 Process Creation chain -->
+  <rule id="102301" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(regsvr32|mshta|msiexec|rundll32|wmic|cmstp|msbuild|installutil|cscript|wscript)\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(cmd|powershell|wscript|cscript|mshta)\.exe$</field>
+    <description>ARGOS: Suspicious child process spawned by LOLBAS - $(win.eventdata.parentImage) spawned $(win.eventdata.image)</description>
+    <mitre><id>T1218</id></mitre>
+    <group>argos,execution,lolbas,child_process</group>
+  </rule>
+
+  <!-- ARGOS Rule 102302: LOLBAS with URL in CommandLine -->
+  <!-- Covers remote execution via HTTP/HTTPS/FTP -->
+  <!-- if_group sysmon_event1: Sysmon EID 1 Process Creation chain -->
+  <rule id="102302" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)(regsvr32|mshta|msiexec|rundll32|wmic|cmstp|msbuild|installutil)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(http|https|ftp|\\\\)</field>
+    <description>ARGOS: LOLBAS executing remote content - $(win.eventdata.commandLine) by $(win.eventdata.user)</description>
+    <mitre><id>T1218</id></mitre>
+    <group>argos,execution,lolbas,remote_content</group>
+  </rule>
+
+</group>
