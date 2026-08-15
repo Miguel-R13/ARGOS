@@ -1,0 +1,42 @@
+<group name="argos,exfiltration,">
+
+  <!-- ARGOS Rule 102000: certutil encoding file for exfiltration -->
+  <!-- certutil -encode converts files to Base64 with certificate headers -->
+  <!-- Used by attackers to prepare data for exfiltration via HTTP -->
+  <!-- if_group sysmon_event1: confirmed working for Sysmon EID 1 via 92072 -->
+  <!-- Wazuh native 92072 only detects -decode (T1140) not -encode (T1041) -->
+  <!-- Telemetry: Sysmon Event ID 1 (Process Creation) -->
+  <rule id="102000" level="10">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)certutil\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)-encode</field>
+    <description>ARGOS: certutil encoding file for exfiltration - $(win.eventdata.commandLine) by $(win.eventdata.user)</description>
+    <mitre><id>T1041</id></mitre>
+    <group>argos,exfiltration,certutil</group>
+  </rule>
+
+  <!-- ARGOS Rule 102001: Invoke-WebRequest exfiltration via PowerShell -->
+  <!-- Covers HTTP POST exfiltration from PowerShell -->
+  <!-- Telemetry: ScriptBlock Logging Event ID 4104 -->
+  <rule id="102001" level="10">
+    <if_sid>91802</if_sid>
+    <field name="win.system.eventID">4104</field>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(Invoke-WebRequest|Invoke-RestMethod|Net\.WebClient).*(UploadFile|UploadData|UploadString|POST)</field>
+    <description>ARGOS: Data exfiltration via PowerShell HTTP request detected on $(agent.name)</description>
+    <mitre><id>T1041</id></mitre>
+    <group>argos,exfiltration,powershell</group>
+  </rule>
+
+<!-- ARGOS Rule 102002: LOLBAS tool network activity - covers all transfer vectors -->
+  <!-- Covers certutil, bitsadmin, curl, wget, powershell with URL in CommandLine -->
+  <!-- if_group sysmon_event1 identified by Miguel in ESC20 -->
+  <rule id="102002" level="10">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)(certutil|bitsadmin|curl|wget)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(http|ftp)</field>
+    <description>ARGOS: LOLBAS tool network activity detected - $(win.eventdata.commandLine) by $(win.eventdata.user)</description>
+    <mitre><id>T1105</id></mitre>
+    <group>argos,exfiltration,lolbas</group>
+  </rule>
+
+</group>
