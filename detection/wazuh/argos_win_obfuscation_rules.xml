@@ -1,0 +1,42 @@
+<group name="argos,defense_evasion,">
+
+  <!-- ARGOS Rule 102400: PowerShell EncodedCommand - Base64 obfuscation -->
+  <!-- Universal indicator: any Base64 payload uses -EncodedCommand/-Enc/-ec -->
+  <!-- Telemetry: Sysmon EID 1 (Process Creation) via sysmon_event1 group -->
+  <!-- Wazuh has no native rule for EncodedCommand detection -->
+  <rule id="102400" level="10">
+    <if_sid>92057</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(-EncodedCommand|-Enc\s|-ec\s)</field>
+    <description>ARGOS: PowerShell encoded command detected - possible obfuscated payload by $(win.eventdata.user)</description>
+    <mitre><id>T1027</id></mitre>
+    <group>argos,defense_evasion,powershell_obfuscation</group>
+  </rule>
+
+  <!-- ARGOS Rule 102401: AMSI bypass via ScriptBlock Logging -->
+  <!-- Post-deobfuscation invariant: AMSI bypass always contains these strings -->
+  <!-- Covers: AmsiUtils, amsiInitFailed, [Ref].Assembly.GetType -->
+  <!-- Telemetry: ScriptBlock Logging EID 4104 -->
+  <rule id="102401" level="14">
+    <if_sid>91802</if_sid>
+    <field name="win.system.eventID">4104</field>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(AmsiUtils|amsiInitFailed|\[Ref\]\.Assembly\.GetType.*Amsi|amsiContext)</field>
+    <description>ARGOS: AMSI bypass detected via ScriptBlock Logging - $(win.eventdata.scriptBlockText)</description>
+    <mitre><id>T1027</id></mitre>
+    <group>argos,defense_evasion,amsi_bypass</group>
+  </rule>
+
+  <!-- ARGOS Rule 102402: Download cradle via ScriptBlock Logging -->
+  <!-- Post-deobfuscation invariant: IEX + DownloadString always present -->
+  <!-- Covers: Invoke-Expression + WebClient, IEX + DownloadString -->
+  <!-- Telemetry: ScriptBlock Logging EID 4104 -->
+  <rule id="102402" level="12">
+    <if_sid>91802</if_sid>
+    <field name="win.system.eventID">4104</field>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(IEX|Invoke-Expression).*(DownloadString|DownloadFile|WebClient|Net\.WebClient)</field>
+    <description>ARGOS: PowerShell download cradle detected via ScriptBlock Logging - possible obfuscated payload execution</description>
+    <mitre><id>T1027</id></mitre>
+    <group>argos,defense_evasion,download_cradle</group>
+  </rule>
+
+</group>
