@@ -1,0 +1,18 @@
+<group name="argos,credential_access,lateral_movement,">
+
+  <!-- ARGOS Rule 102200: Pass the Hash confirmed via KeyLength 0 -->
+  <!-- KeyLength 0 in NTLM LogonType 3 = hash used directly instead of password -->
+  <!-- Legitimate NTLM auth has KeyLength 128 -->
+  <!-- Builds on ESC17 rule 101700 adding KeyLength 0 filter -->
+  <!-- Wazuh native 92652 detects NTLM logon at level 6 without PtH context -->
+  <!-- Telemetry: Security Event Log, Event ID 4624, LogonType 3, NTLM -->
+  <!-- Validated: impacket-psexec with hash a02213981fd54d8e6e8a6cb0a1aac528 -->
+  <rule id="102200" level="14">
+    <if_sid>101700</if_sid>
+    <field name="win.eventdata.keyLength">0</field>
+    <description>ARGOS: Pass the Hash detected - NTLM logon with KeyLength 0 from $(win.eventdata.ipAddress) - user $(win.eventdata.targetUserName)</description>
+    <mitre><id>T1550.002</id></mitre>
+    <group>argos,credential_access,pass_the_hash</group>
+  </rule>
+
+</group>
