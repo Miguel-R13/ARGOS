@@ -1,3 +1,4 @@
+
 # ARGOS · AI-Augmented SOC Detection & Response Platform
 
 > *"La IA propone. El analista decide. ARGOS documenta por qué importa la diferencia."*
@@ -6,16 +7,25 @@ XDR open source con supervisión humana del modelo, construido desde cero sobre 
 
 No es un Wazuh instalado con las reglas por defecto. Es un sistema donde cada regla de detección nació de un ataque real ejecutado en laboratorio, cada gap en herramientas de referencia como SigmaHQ fue identificado por un analista y cubierto con detección original propia, y cada corrección técnica sobre las propuestas de la IA está documentada con criterio profesional SOC.
 
-Lo que diferencia a ARGOS:
+---
+
+## Pilar filosófico
+
+**ARGOS rebate la tesis de que el analista L1 va a desaparecer por la IA.**
+
+El apartado de Tuning de IA (sección 5.14 de la memoria del proyecto) demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario, Miguel - el analista - identificó correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas.
+
+La IA es una herramienta de asistencia. El criterio profesional del analista es el que diferencia un sistema de detección robusto de uno que parece completo pero deja pasar los ataques reales.
+
+---
+
+## Lo que diferencia a ARGOS
 
 - **Detección original, no heredada.** Se parte de SigmaHQ para identificar lo que falta, no para copiar lo que existe. Cada regla Sigma y XML se construye desde cero con keywords validados empíricamente sobre telemetría real.
 - **Ningún campo se asume.** El ataque se simula primero, se analiza la telemetría, y solo entonces se escribe la regla. Nunca al revés.
 - **Human-in-the-loop documentado.** El analista no solo supervisa alertas: supervisa la lógica de detección, identifica sus gaps y aprueba las acciones de respuesta. Hay una sección de Tuning de IA en la memoria del proyecto que registra cada corrección técnica que el criterio profesional hace sobre la herramienta.
 - **Kill chain completa, no escenarios aislados.** 24 escenarios organizados en dos bloques de kill chain real: Linux (ESC01-ESC10) y Windows (ESC11-ESC24), desde el reconocimiento hasta la exfiltración y el credential dumping.
 - **Evidencia de cada paso.** Cada escenario tiene capturas del ataque, la telemetría, el alerts.log y el dashboard. No hay nada que no esté validado.
-
-Trabajo de Fin de Máster · IMMUNE × Universidad Nebrija × Banco Santander · 2025-2026  
-🔨 En desarrollo activo
 
 ---
 
@@ -47,6 +57,7 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 
 ## Arquitectura
 
+```
                 ┌─────────────────────────────┐
                 │     ARGOS · Wazuh Server    │
                 │     192.168.234.10          │
@@ -69,6 +80,7 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 │ ufw.log        │ │ Security Log │
 │ Wazuh Agent    │ │ Wazuh Agent  │
 └────────────────┘ └──────────────┘
+```
 
 ---
 
@@ -87,8 +99,8 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | Detección de contenido | **YARA** *(en desarrollo)* |
 | Triaje IA | **Ollama** · Mistral 7B / LLaMA 3 8B, 100% local *(en desarrollo)* |
 | Automatización | **Python** · Playbooks SOAR *(en desarrollo)* |
-| Alertas | **Telegram** (severidad alta y crítica) *(en desarrollo)* |
-| Módulo de phishing | **PhishGuard**, análisis estático offline de .eml *(en desarrollo)* |
+| Alertas | **Telegram** *(en desarrollo)* |
+| Módulo de phishing | **PhishGuard** *(en desarrollo)* |
 | Framework de detección | **MITRE ATT&CK** |
 | Framework de respuesta | **NIST** IR lifecycle |
 
@@ -101,10 +113,10 @@ Ninguna regla de ARGOS existe sin pasar por estos 9 puntos. No hay excepciones.
 **1. Contexto de la amenaza**
 Qué hace el atacante, qué posición ocupa en la kill chain, qué valor tiene para el adversario.
 
-**2. Gap en herramientas nativas**
-Qué detecta Wazuh por defecto, qué tiene SigmaHQ, qué queda sin cubrir y por qué importa ese gap.
+**2. Gap en herramientas nativas y SigmaHQ**
+Qué detecta Wazuh por defecto, qué tiene SigmaHQ, qué queda sin cubrir y por qué importa ese gap. **Este paso es fundamental y no es opcional:** antes de escribir cualquier regla se revisa el repositorio SigmaHQ clonado localmente. ARGOS no crea reglas donde ya existe cobertura suficiente; solo construye detección original donde hay un gap real que las herramientas existentes no cubren.
 
-**3. Decisiones de diseño, telemetría y obtención de keywords**
+**3. Decisiones de diseño, telemetría y obtención de keywords empíricos**
 Simulación exploratoria previa: el ataque se ejecuta en laboratorio y se analiza la telemetría real. Ningún campo se asume. Los keywords invariantes son los que aparecen en el log real, no los que dice la documentación.
 
 **4. Qué consigue ARGOS**
@@ -144,7 +156,7 @@ El ataque se ejecuta de nuevo. La alerta dispara. Se documenta con 3 capturas: A
 | ESC09 | Desactivación de herramientas de seguridad | T1562.001 · Impair Defenses | ✅ |
 | ESC10 | Exfiltración de datos via curl/wget | T1041 + T1105 | ✅ |
 
-### Bloque Windows · Endpoint 192.168.234.20 · Kill chain en curso
+### Bloque Windows · Endpoint 192.168.234.20 · Kill chain completa
 
 | # | Escenario | TTP MITRE ATT&CK | Estado |
 | --- | --- | --- | --- |
@@ -154,14 +166,14 @@ El ataque se ejecuta de nuevo. La alerta dispara. Se documenta con 3 capturas: A
 | ESC14 | Escalada de privilegios UAC bypass fodhelper | T1548.002 · Bypass UAC | ✅ |
 | ESC15 | Reverse shell PowerShell | T1059.001 · PowerShell | ✅ |
 | ESC16 | Persistencia via tareas programadas | T1053.005 · Scheduled Task | ✅ |
-| ESC17 | Movimiento lateral SMB/WMI | T1021.002 · SMB/Windows Admin Shares | 🔨 |
-| ESC18 | Transferencia lateral via SMB | T1570 · Lateral Tool Transfer | 🔨 |
-| ESC19 | Desactivación Defender/Wazuh | T1562.001 · Impair Defenses | 🔨 |
-| ESC20 | Exfiltración via PowerShell/certutil | T1041 · Exfiltration Over C2 | 🔨 |
-| ESC21 | Credential dumping LSASS/SAM | T1003.001 · LSASS Memory | 🔨 |
-| ESC22 | Pass the Hash | T1550.002 · Pass the Hash | 🔨 |
-| ESC23 | LOLBAS: certutil, regsvr32, mshta | T1218 · System Binary Proxy Execution | 🔨 |
-| ESC24 | PowerShell obfuscado | T1027 · Obfuscated Files or Information | 🔨 |
+| ESC17 | Movimiento lateral SMB/psexec | T1021.002 · SMB/Windows Admin Shares | ✅ |
+| ESC18 | Transferencia lateral via SMB | T1570 · Lateral Tool Transfer | ✅ |
+| ESC19 | Desactivacion Defender/Wazuh/Sysmon | T1562.001 · Impair Defenses | ✅ |
+| ESC20 | Exfiltracion via certutil/PowerShell LOLBAS | T1041 + T1105 | ✅ |
+| ESC21 | Credential dumping LSASS/SAM | T1003.001 + T1003.002 | ✅ |
+| ESC22 | Pass the Hash | T1550.002 · Pass the Hash | ✅ |
+| ESC23 | LOLBAS: regsvr32, mshta, wmic | T1218 · System Binary Proxy Execution | ✅ |
+| ESC24 | PowerShell obfuscado EncodedCommand | T1027 · Obfuscated Files or Information | ✅ |
 
 ---
 
@@ -172,10 +184,9 @@ El ataque se ejecuta de nuevo. La alerta dispara. Se documenta con 3 capturas: A
 | Wazuh 4.9.2 + OpenSearch + agentes | ✅ Implementado |
 | Sysmon v15 (SwiftOnSecurity) en endpoint Windows | ✅ Implementado |
 | ScriptBlock Logging en endpoint Windows | ✅ Implementado |
-| Reglas Sigma propias · 26 reglas (10 Linux + 16 Windows) | ✅ Implementado |
+| Reglas Sigma propias · 28 reglas (10 Linux + 18 Windows) | ✅ Implementado |
 | Reglas XML Wazuh propias · bloque Linux ESC01-ESC10 | ✅ Completado |
-| Reglas XML Wazuh propias · bloque Windows ESC11-ESC16 | ✅ Completado |
-| Bloque Windows ESC17-ESC24 | 🔨 En desarrollo |
+| Reglas XML Wazuh propias · bloque Windows ESC11-ESC24 | ✅ Completado |
 | Suricata IDS/IPS | 🔨 En desarrollo |
 | Reglas YARA | 🔨 En desarrollo |
 | Playbooks SOAR en Python | 🔨 En desarrollo |
@@ -190,17 +201,19 @@ El ataque se ejecuta de nuevo. La alerta dispara. Se documenta con 3 capturas: A
 
 ## Estructura del repositorio
 
+```
 ARGOS/
 ├── detection/
-│ ├── sigma/ # Reglas Sigma propias (.yml) · Linux + Windows
-│ ├── wazuh/ # Reglas XML Wazuh propias · Linux + Windows
-│ └── yara/ # Reglas YARA (en desarrollo)
+│   ├── sigma/    # Reglas Sigma propias (.yml) · Linux + Windows
+│   ├── wazuh/    # Reglas XML Wazuh propias · Linux + Windows
+│   └── yara/     # Reglas YARA (en desarrollo)
 ├── soar/
-│ └── playbooks/ # Playbooks SOAR en Python (en desarrollo)
-├── dashboard/ # Dashboard de supervisión humana (en desarrollo)
+│   └── playbooks/  # Playbooks SOAR en Python (en desarrollo)
+├── dashboard/      # Dashboard de supervisión humana (en desarrollo)
 ├── docs/
-│ └── architecture/ # Diagramas de arquitectura
+│   └── architecture/  # Diagramas de arquitectura
 └── README.md
+```
 
 ---
 
@@ -217,7 +230,8 @@ ARGOS/
 
 ## Autor
 
-**Miguel Reguero** · Blue Team / SOC Analyst  
-[LinkedIn](https://www.linkedin.com/in/miguel-reguero/) · [GitHub](https://github.com/Miguel-R13) · [Portfolio](https://miguel-r13.github.io)  
-Máster en Ciberseguridad · IMMUNE × Universidad Nebrija × Banco Santander · Nota media 9,5/10  
+**Miguel Reguero** · Blue Team / SOC Analyst
+[LinkedIn](https://www.linkedin.com/in/miguel-reguero/) · [GitHub](https://github.com/Miguel-R13) · [Portfolio](https://miguel-r13.github.io)
+Máster en Ciberseguridad · IMMUNE × Universidad Nebrija × Banco Santander · Nota media 9,5/10
 Top 5% TryHackMe · Autor de [PhishGuard](https://github.com/Miguel-R13/Phishguard)
+```
