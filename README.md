@@ -5,7 +5,7 @@
 
 XDR open source con supervisión humana del modelo, construido desde cero sobre Wazuh.
 
-No es un Wazuh instalado con las reglas por defecto. Es un sistema donde cada regla de detección nació de un ataque real ejecutado en laboratorio, cada gap en herramientas de referencia como SigmaHQ fue identificado por un analista y cubierto con detección original propia, y cada corrección técnica sobre las propuestas de la IA está documentada con criterio profesional SOC.
+No es un Wazuh instalado con las reglas por defecto. Es un sistema donde cada regla de detección nació de un ataque real ejecutado en laboratorio, cada gap en herramientas de referencia como SigmaHQ fue identificado por mí (Miguel Reguero, Blue Team Analyst) y cubierto con detección original propia, y cada corrección técnica sobre las propuestas de la IA está documentada con criterio profesional SOC.
 
 ---
 
@@ -13,7 +13,7 @@ No es un Wazuh instalado con las reglas por defecto. Es un sistema donde cada re
 
 **ARGOS rebate la tesis de que el analista L1 va a desaparecer por la IA.**
 
-El apartado de Tuning de IA (sección 5.14 de la memoria del proyecto) demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario, Miguel - el analista - identificó correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas.
+El apartado de Tuning de IA (sección 5.14 de la memoria del proyecto) demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas...
 
 La IA es una herramienta de asistencia. El criterio profesional del analista es el que diferencia un sistema de detección robusto de uno que parece completo pero deja pasar los ataques reales.
 
