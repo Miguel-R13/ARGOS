@@ -1,0 +1,46 @@
+<!-- ARGOS SOC - Miguel Reguero -->
+<!-- Reglas YARA: detección basada en contenido de archivos -->
+<!-- Rango: 103000-103009 (Linux) -->
+
+<group name="argos,yara,linux">
+
+  <rule id="103000" level="10">
+    <decoded_as>argos_yara</decoded_as>
+    <description>ARGOS: YARA match detectado en endpoint Linux - $(yara_rule) en $(yara_file)</description>
+    <mitre>
+      <id>T1059</id>
+    </mitre>
+    <group>argos_yara</group>
+  </rule>
+
+  <rule id="103001" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Bash_Reverse_Shell_Script</field>
+    <description>ARGOS: YARA-01 - Bash reverse shell script detectado en $(yara_file) - ESC05 T1059.004</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>argos_yara,reverse_shell</group>
+  </rule>
+
+  <rule id="103002" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Bash_Crontab_Persistence</field>
+    <description>ARGOS: YARA-02 - Persistencia via crontab detectada en $(yara_file) - ESC06 T1053.003</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>argos_yara,persistence</group>
+  </rule>
+
+  <rule id="103003" level="12">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Ingress_Tool_Transfer_Linux</field>
+    <description>ARGOS: YARA-03 - Herramienta descargada detectada en $(yara_file) - ESC10 T1105</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+    <group>argos_yara,lateral_movement</group>
+  </rule>
+
+</group>

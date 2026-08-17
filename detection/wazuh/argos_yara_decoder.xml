@@ -1,0 +1,12 @@
+<!-- ARGOS SOC - Miguel Reguero -->
+<!-- Decoder para eventos YARA generados por argos_yara_scan.py -->
+
+<decoder name="argos_yara">
+  <program_name>argos_yara_match</program_name>
+</decoder>
+
+<decoder name="argos_yara_rule">
+  <parent>argos_yara</parent>
+  <regex>yara_rule": "(\w+)", "yara_file": "(\S+)"</regex>
+  <order>yara_rule, yara_file</order>
+</decoder>
