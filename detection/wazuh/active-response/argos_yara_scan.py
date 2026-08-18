@@ -2,6 +2,7 @@
 # ARGOS SOC - Miguel Reguero
 # Active Response: YARA scanner para deteccion de artefactos maliciosos
 # Wazuh 4.9.2 - envia eventos via localfile a logcollector
+# v2: exclusiones de ruido (archivos .yarc, .ko, .yar y rutas de kernel)
 
 import sys
 import json
@@ -13,6 +14,10 @@ import socket
 YARA_RULES_PATH = "/opt/argos/yara/rules/linux/argos_linux_all.yar"
 LOG_FILE = "/var/ossec/logs/active-responses.log"
 YARA_EVENTS_LOG = "/var/ossec/logs/argos_yara_events.log"
+
+# Exclusiones de ruido documentadas en Cap13 - Reduccion de ruido ARGOS
+EXCLUDED_EXTENSIONS = ['.yarc', '.ko', '.yar']
+EXCLUDED_PATHS = ['/var/tmp/mkinitramfs', '/opt/argos/yara']
 
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -70,6 +75,15 @@ def main():
 
     if not file_path or not os.path.isfile(file_path):
         log(f"Archivo no encontrado: {file_path}")
+        sys.exit(0)
+
+    # Exclusiones de ruido: extensiones y rutas conocidas sin valor SOC
+    if any(file_path.endswith(ext) for ext in EXCLUDED_EXTENSIONS):
+        log(f"Excluido por extension: {file_path}")
+        sys.exit(0)
+
+    if any(file_path.startswith(path) for path in EXCLUDED_PATHS):
+        log(f"Excluido por ruta: {file_path}")
         sys.exit(0)
 
     log(f"Escaneando: {file_path}")
