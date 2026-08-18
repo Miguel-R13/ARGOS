@@ -43,4 +43,15 @@
     <group>argos_yara,lateral_movement</group>
   </rule>
 
+  <!-- YARA-04: Reverse shell en lenguajes interpretados Python/Perl (T1059.006/T1059.003) -->
+  <rule id="103004" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Reverse_Shell_Interpreted_Languages</field>
+    <description>ARGOS: YARA-04 - Reverse shell en script Python/Perl detectado en $(yara_file) - T1059.006/T1059.003</description>
+    <mitre>
+      <id>T1059.006</id>
+    </mitre>
+    <group>argos_yara,reverse_shell</group>
+  </rule>
+
 </group>
