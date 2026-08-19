@@ -54,4 +54,15 @@
     <group>argos_yara,reverse_shell</group>
   </rule>
 
+  <!-- YARA-05: Webshell PHP y Python en endpoint Linux (T1505.003) -->
+  <rule id="103005" level="14">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Webshell_Linux</field>
+    <description>ARGOS: YARA-05 - Webshell detectada en $(yara_file) - T1505.003 Server Software Component</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>argos_yara,webshell</group>
+  </rule>
+
 </group>
