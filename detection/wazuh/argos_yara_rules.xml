@@ -6,7 +6,7 @@
 
   <rule id="103000" level="10">
     <decoded_as>argos_yara</decoded_as>
-    <description>ARGOS: YARA match detectado en endpoint Linux - $(yara_rule) en $(yara_file)</description>
+    <description>ARGOS: YARA match detectado en endpoint ARGOS - $(yara_rule) en $(yara_file)</description>
     <mitre>
       <id>T1059</id>
     </mitre>
@@ -63,6 +63,28 @@
       <id>T1505.003</id>
     </mitre>
     <group>argos_yara,webshell</group>
+  </rule>
+
+  <!-- YARA-06: PowerShell reverse shell TCPClient (ESC15 - T1059.001) -->
+  <rule id="103006" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PowerShell_Reverse_Shell</field>
+    <description>ARGOS: YARA-06 - PowerShell reverse shell TCPClient detectado en $(yara_file) - ESC15 T1059.001</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+    <group>argos_yara,reverse_shell</group>
+  </rule>
+
+  <!-- YARA-07: PowerShell schtasks persistencia (ESC16 - T1053.005) -->
+  <rule id="103007" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PowerShell_Schtasks_Persistence</field>
+    <description>ARGOS: YARA-07 - Script schtasks persistencia detectado en $(yara_file) - ESC16 T1053.005</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+    <group>argos_yara,persistence</group>
   </rule>
 
 </group>
