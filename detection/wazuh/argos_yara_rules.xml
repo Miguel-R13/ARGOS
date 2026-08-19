@@ -87,4 +87,15 @@
     <group>argos_yara,persistence</group>
   </rule>
 
+  <!-- YARA-08: Herramienta ofensiva depositada via SMB (ESC17/ESC18 - T1570) -->
+  <rule id="103008" level="14">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_SMB_Lateral_Movement_Tool</field>
+    <description>ARGOS: YARA-08 - Herramienta de movimiento lateral detectada en $(yara_file) - ESC17/ESC18 T1570</description>
+    <mitre>
+      <id>T1570</id>
+    </mitre>
+    <group>argos_yara,lateral_movement</group>
+  </rule>
+
 </group>
