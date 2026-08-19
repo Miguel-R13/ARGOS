@@ -98,4 +98,15 @@
     <group>argos_yara,lateral_movement</group>
   </rule>
 
+  <!-- YARA-09: Script desactivacion herramientas de seguridad (ESC19 - T1562.001) -->
+  <rule id="103009" level="14">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PowerShell_Disable_Security_Tools</field>
+    <description>ARGOS: YARA-09 - Script desactivacion herramientas de seguridad detectado en $(yara_file) - ESC19 T1562.001</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>argos_yara,defense_evasion</group>
+  </rule>
+
 </group>
