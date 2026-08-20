@@ -219,4 +219,45 @@
     <group>argos_yara,defense_evasion</group>
   </rule>
 
+  <!-- YARA-20: PowerShell EncodedCommand (ESC24 - T1027.010) -->
+  <rule id="103020" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PS_EncodedCommand</field>
+    <description>ARGOS: YARA-20 - PowerShell EncodedCommand ofuscado detectado en $(yara_file) - ESC24 T1027.010</description>
+    <mitre><id>T1027</id></mitre>
+    <group>argos_yara,defense_evasion</group>
+  </rule>
+  <!-- YARA-21: SecureString obfuscation (ESC24 - T1027.010) -->
+  <rule id="103021" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PS_SecureString_Obfuscation</field>
+    <description>ARGOS: YARA-21 - PowerShell SecureString obfuscation detectado en $(yara_file) - ESC24 T1027.010</description>
+    <mitre><id>T1027</id></mitre>
+    <group>argos_yara,defense_evasion</group>
+  </rule>
+  <!-- YARA-22: GZip/Deflate compression (ESC24 - T1027.010) -->
+  <rule id="103022" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PS_Compression_Obfuscation</field>
+    <description>ARGOS: YARA-22 - PowerShell compresion GZip/Deflate detectado en $(yara_file) - ESC24 T1027.010</description>
+    <mitre><id>T1027</id></mitre>
+    <group>argos_yara,defense_evasion</group>
+  </rule>
+  <!-- YARA-23: AMSI bypass (ESC24 - T1562.001) -->
+  <rule id="103023" level="14">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PS_AMSI_Bypass</field>
+    <description>ARGOS: YARA-23 - PowerShell AMSI bypass detectado en $(yara_file) - ESC24 T1562.001</description>
+    <mitre><id>T1562.001</id></mitre>
+    <group>argos_yara,defense_evasion</group>
+  </rule>
+  <!-- YARA-24: String manipulation obfuscation (ESC24 - T1027.010) -->
+  <rule id="103024" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PS_String_Obfuscation</field>
+    <description>ARGOS: YARA-24 - PowerShell string manipulation obfuscation detectado en $(yara_file) - ESC24 T1027.010</description>
+    <mitre><id>T1027</id></mitre>
+    <group>argos_yara,defense_evasion</group>
+  </rule>
+
 </group>
