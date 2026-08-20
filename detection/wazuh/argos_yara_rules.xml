@@ -109,4 +109,37 @@
     <group>argos_yara,defense_evasion</group>
   </rule>
 
+  <!-- YARA-10: Archivo Base64 generado por certutil -encode (ESC20 - T1041) -->
+  <rule id="103010" level="12">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Certutil_Base64_Encoded_File</field>
+    <description>ARGOS: YARA-10 - Archivo Base64 certutil detectado en $(yara_file) - ESC20 T1041</description>
+    <mitre>
+      <id>T1041</id>
+    </mitre>
+    <group>argos_yara,exfiltration</group>
+  </rule>
+
+  <!-- YARA-11: Script PowerShell FromBase64String decoder (T1027) -->
+  <rule id="103011" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_PowerShell_Base64_Decoder</field>
+    <description>ARGOS: YARA-11 - Script PowerShell decodificacion Base64 a disco detectado en $(yara_file) - T1027</description>
+    <mitre>
+      <id>T1027</id>
+    </mitre>
+    <group>argos_yara,defense_evasion</group>
+  </rule>
+
+  <!-- YARA-12: Script batch certutil -decode (T1027) -->
+  <rule id="103012" level="13">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Certutil_Base64_Decode_Script</field>
+    <description>ARGOS: YARA-12 - Script certutil -decode detectado en $(yara_file) - T1027</description>
+    <mitre>
+      <id>T1027</id>
+    </mitre>
+    <group>argos_yara,defense_evasion</group>
+  </rule>
+
 </group>
