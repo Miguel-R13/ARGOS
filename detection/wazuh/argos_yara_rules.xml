@@ -142,4 +142,37 @@
     <group>argos_yara,defense_evasion</group>
   </rule>
 
+  <!-- YARA-13: Comandos mimikatz en scripts (ESC21/ESC22 - T1003.001) -->
+  <rule id="103013" level="14">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Mimikatz_Commands_Script</field>
+    <description>ARGOS: YARA-13 - Comandos mimikatz detectados en $(yara_file) - ESC21/ESC22 T1003.001</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>argos_yara,credential_access</group>
+  </rule>
+
+  <!-- YARA-14: Archivo log generado por mimikatz (ESC21/ESC22 - T1003.001) -->
+  <rule id="103014" level="14">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_Mimikatz_Log_Output</field>
+    <description>ARGOS: YARA-14 - Archivo log de mimikatz detectado en $(yara_file) - ESC21/ESC22 T1003.001</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>argos_yara,credential_access</group>
+  </rule>
+
+  <!-- YARA-15: LSASS minidump (ESC21/ESC22 - T1003.001) -->
+  <rule id="103015" level="15">
+    <if_sid>103000</if_sid>
+    <field name="yara_rule">ARGOS_LSASS_Minidump</field>
+    <description>ARGOS: YARA-15 - LSASS minidump detectado en $(yara_file) - ESC21/ESC22 T1003.001</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>argos_yara,credential_access</group>
+  </rule>
+
 </group>
