@@ -102,7 +102,7 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | Telemetría Windows - procesos | **Sysmon v15** (SwiftOnSecurity config) |
 | Telemetría Windows - scripts | **ScriptBlock Logging** (Event ID 4104) |
 | Telemetría Windows - autenticación | **Security Event Log** (EID 4625, 4624, 4698, 5157...) |
-| Detección de red | **Suricata** IDS/IPS 🔨 |
+| Detección de red | **Suricata** IDS/IPS ✅ |
 | Triaje IA | **Ollama** · Mistral 7B / LLaMA 3 8B, 100% local 🔨 |
 | Automatización | **Python** · Playbooks SOAR 🔨 |
 | Alertas | **Telegram** 🔨 |
@@ -262,7 +262,7 @@ El artefacto se crea en el endpoint. La alerta 103xxx dispara. Se documenta con 
 | Reglas XML Wazuh propias · bloque Windows ESC11-ESC24 | ✅ Completado |
 | Pipeline YARA · FIM + Active Response + decoder + reglas XML | ✅ Implementado |
 | Reglas YARA · 24 reglas completas (YARA-01 a YARA-24) | ✅ Completado |
-| Suricata IDS/IPS | 🔨 En desarrollo |
+| Suricata IDS/IPS | ✅ Instalado y configurado · reglas en desarrollo |
 | Playbooks SOAR en Python | 🔨 En desarrollo |
 | Triaje con LLM local (Ollama) | 🔨 En desarrollo |
 | Alertas Telegram | 🔨 En desarrollo |
@@ -285,6 +285,7 @@ ARGOS/
 │   │   │   └── argos_yara_scan_win.py  # Script AR Windows
 │   │   ├── argos_yara_decoder.xml
 │   │   └── argos_yara_rules.xml        # Reglas 103000-103024
+│   ├── suricata/         # Reglas Suricata propias (.rules) · en desarrollo
 │   └── yara/
 │       ├── linux/              # 5 reglas YARA bloque Linux (YARA-01 a YARA-05)
 │       └── windows/            # 19 reglas YARA bloque Windows (YARA-06 a YARA-24)
