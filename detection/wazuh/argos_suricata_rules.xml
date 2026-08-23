@@ -1,0 +1,39 @@
+<!-- ARGOS Suricata Rules - Wazuh XML -->
+<!-- Eleva nivel de alertas Suricata ARGOS según gravedad real del ataque -->
+
+<group name="argos,suricata,">
+
+  <!-- SURICATA-ESC01: Reconocimiento activo TCP SYN Port Scan Nmap -->
+  <rule id="110001" level="10">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature">ARGOS RECON TCP SYN Port Scan - Nmap Invariant win1024</field>
+    <description>ARGOS SURICATA-ESC01: Reconocimiento activo de red, TCP SYN Port Scan nmap invariant (T1046)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>reconnaissance,network_scan,</group>
+  </rule>
+
+  <!-- SURICATA-ESC01b: Reconocimiento activo Generic Scanner Threshold -->
+  <rule id="110002" level="10">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature">ARGOS RECON TCP SYN Port Scan - Generic Scanner Threshold</field>
+    <description>ARGOS SURICATA-ESC01b: Reconocimiento activo de red, Generic Scanner Threshold (T1046)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>reconnaissance,network_scan,</group>
+  </rule>
+
+  <!-- SURICATA-ESC02: Brute Force SSH Non-Standard Banner -->
+  <rule id="110003" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature">ARGOS INITIAL ACCESS SSH Brute Force Non-Standard Client Banner</field>
+    <description>ARGOS SURICATA-ESC02: Brute force SSH con cliente no estandar detectado, herramienta de ataque identificada (T1110.001)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>initial_access,brute_force,</group>
+  </rule>
+
+</group>

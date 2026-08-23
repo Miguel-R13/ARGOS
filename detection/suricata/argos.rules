@@ -19,3 +19,18 @@ alert tcp any any -> $HOME_NET any (msg:"ARGOS RECON TCP SYN Port Scan - Nmap In
 # Cubre masscan, zmap y cualquier escaner independiente del window size.
 # ============================================================
 alert tcp any any -> $HOME_NET any (msg:"ARGOS RECON TCP SYN Port Scan - Generic Scanner Threshold"; flags:S,12; threshold:type threshold,track by_src,count 50,seconds 5; classtype:network-scan; sid:9000002; rev:1; metadata:created_at 2026_08_23, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0043, mitre_tactic_name Reconnaissance, mitre_technique_id T1046, mitre_technique_name Network_Service_Discovery;)
+
+
+# ============================================================
+# ARGOS-NET-02 | INITIAL ACCESS | SSH Brute Force Non-Standard Banner
+# ============================================================
+# MITRE: T1110.001 - Brute Force: Password Guessing | TA0001 - Initial Access
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta clientes SSH con banner no perteneciente a la
+# whitelist de clientes legitimos del entorno ARGOS (OpenSSH).
+# Cubre hydra (libssh_0.x), medusa (MEDUSA_1.0), ncrack y cualquier
+# herramienta de brute force con banner no estandar.
+# Whitelist empirica: SSH-2.0-OpenSSH (unico cliente legitimo en SOC LAN)
+
+# ============================================================
+alert ssh any any -> $HOME_NET 22 (msg:"ARGOS INITIAL ACCESS SSH Brute Force Non-Standard Client Banner"; flow:established,to_server; ssh.software; content:!"OpenSSH"; classtype:attempted-admin; sid:9000003; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0001, mitre_tactic_name Initial_Access, mitre_technique_id T1110.001, mitre_technique_name Brute_Force_Password_Guessing;)
