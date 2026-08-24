@@ -157,4 +157,15 @@
     <group>lateral_movement,wmi,</group>
   </rule>
 
+  <!-- SURICATA-ESC12: Pass-the-Hash NTLM SMB -->
+  <rule id="110015" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000015</field>
+    <description>ARGOS SURICATA-ESC12: Pass-the-Hash detectado, autenticacion NTLM anomala en trafico SMB puerto 445 (T1550.002)</description>
+    <mitre>
+      <id>T1550.002</id>
+    </mitre>
+    <group>lateral_movement,pass_the_hash,ntlm,</group>
+  </rule>
+
 </group>

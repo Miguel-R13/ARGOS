@@ -158,3 +158,15 @@ alert tcp any any -> $HOME_NET 445 (msg:"ARGOS LATERAL MOVEMENT SMB anomalo mult
 # Threshold: 3 conexiones TCP:135 en 60 segundos desde el mismo origen.
 # ============================================================
 alert tcp any any -> $HOME_NET 135 (msg:"ARGOS LATERAL MOVEMENT WMI RPC multiples conexiones puerto 135"; flow:to_server; threshold:type threshold,track by_src,count 3,seconds 60; classtype:attempted-admin; sid:9000014; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1047, mitre_technique_name Windows_Management_Instrumentation;)
+
+# ============================================================
+# ARGOS-NET-12 | LATERAL MOVEMENT | Pass-the-Hash NTLM SMB
+# ============================================================
+# MITRE: T1550.002 - Pass the Hash | TA0008 - Lateral Movement
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-25
+# Descripcion: Detecta autenticacion NTLM en trafico SMB mediante
+# inspeccion del magic bytes NTLMSSP en el payload.
+# La presencia de NTLMSSP en SMB desde endpoints hacia destinos internos
+# donde no deberia haber autenticacion es invariante de Pass-the-Hash.
+# ============================================================
+alert tcp $HOME_NET any -> $HOME_NET 445 (msg:"ARGOS LATERAL MOVEMENT Pass-the-Hash NTLM autenticacion SMB anomala"; flow:established,to_server; content:"NTLMSSP"; classtype:attempted-admin; sid:9000015; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1550.002, mitre_technique_name Pass_the_Hash;)
