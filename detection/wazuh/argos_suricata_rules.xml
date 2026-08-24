@@ -146,4 +146,15 @@
     <group>lateral_movement,smb,</group>
   </rule>
 
+  <!-- SURICATA-ESC11: WMI RPC lateral movement -->
+  <rule id="110014" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000014</field>
+    <description>ARGOS SURICATA-ESC11: WMI lateral movement detectado, multiples conexiones RPC puerto 135, posible ejecucion remota via WMI (T1047)</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <group>lateral_movement,wmi,</group>
+  </rule>
+
 </group>
