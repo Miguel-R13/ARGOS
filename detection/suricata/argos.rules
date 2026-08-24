@@ -134,3 +134,14 @@ alert tcp any any -> $HOME_NET 3389 (msg:"ARGOS LATERAL MOVEMENT RDP hacia multi
 # Threshold: 10 conexiones en 60 segundos hacia el mismo destino.
 # ============================================================
 alert tcp any any -> $HOME_NET 3389 (msg:"ARGOS LATERAL MOVEMENT RDP Brute Force multiples intentos mismo destino"; flow:to_server; threshold:type threshold,track by_dst,count 10,seconds 60; classtype:attempted-admin; sid:9000012; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1110.001, mitre_technique_name Brute_Force_Password_Guessing;)
+# ============================================================
+# ARGOS-NET-10 | LATERAL MOVEMENT | SMB anomalo entre endpoints
+# ============================================================
+# MITRE: T1021.002 - SMB Windows Admin Shares | TA0008 - Lateral Movement
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta trafico SMB anomalo en la SOC LAN.
+# Los endpoints no comparten recursos SMB entre si en condiciones normales.
+# Cubre PsExec, Impacket, CrackMapExec y EternalBlue.
+# Threshold: 3 conexiones TCP:445 en 60 segundos desde el mismo origen.
+# ============================================================
+alert tcp any any -> $HOME_NET 445 (msg:"ARGOS LATERAL MOVEMENT SMB anomalo multiples conexiones puerto 445"; flow:to_server; threshold:type threshold,track by_src,count 3,seconds 60; classtype:attempted-admin; sid:9000013; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1021.002, mitre_technique_name SMB_Windows_Admin_Shares;)

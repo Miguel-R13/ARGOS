@@ -135,4 +135,15 @@
     <group>lateral_movement,rdp,brute_force,</group>
   </rule>
 
+  <!-- SURICATA-ESC10: SMB anomalo entre endpoints -->
+  <rule id="110013" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000013</field>
+    <description>ARGOS SURICATA-ESC10: SMB anomalo detectado, multiples conexiones puerto 445, posible movimiento lateral via PsExec/Impacket (T1021.002)</description>
+    <mitre>
+      <id>T1021.002</id>
+    </mitre>
+    <group>lateral_movement,smb,</group>
+  </rule>
+
 </group>
