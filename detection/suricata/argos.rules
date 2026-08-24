@@ -112,3 +112,25 @@ alert tcp 192.168.234.20,192.168.234.30 any -> 192.168.234.40 any (msg:"ARGOS C2
 # desde el mismo origen. Ningún usuario legitimo hace SSH masivo interno.
 # ============================================================
 alert tcp $HOME_NET any -> $HOME_NET 22 (msg:"ARGOS LATERAL MOVEMENT SSH hacia multiples destinos internos"; flow:to_server; threshold:type threshold,track by_src,count 3,seconds 60; classtype:attempted-admin; sid:9000010; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1021.004, mitre_technique_name Remote_Services_SSH;)
+
+# ============================================================
+# ARGOS-NET-09 | LATERAL MOVEMENT | RDP hacia multiples destinos
+# ============================================================
+# MITRE: T1021.001 - Remote Desktop Protocol | TA0008 - Lateral Movement
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta movimiento lateral RDP: un origen conectando
+# a multiples destinos internos en puerto 3389. Track by_src.
+# Threshold: 5 conexiones en 60 segundos desde el mismo origen.
+# ============================================================
+alert tcp any any -> $HOME_NET 3389 (msg:"ARGOS LATERAL MOVEMENT RDP hacia multiples destinos internos"; flow:to_server; threshold:type threshold,track by_src,count 5,seconds 60; classtype:attempted-admin; sid:9000011; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1021.001, mitre_technique_name Remote_Desktop_Protocol;)
+
+# ============================================================
+# ARGOS-NET-09b | LATERAL MOVEMENT | RDP Brute Force mismo destino
+# ============================================================
+# MITRE: T1110.001 - Brute Force Password Guessing | TA0008 - Lateral Movement
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta brute force RDP clasico: multiples intentos
+# contra el mismo destino en puerto 3389. Track by_dst.
+# Threshold: 10 conexiones en 60 segundos hacia el mismo destino.
+# ============================================================
+alert tcp any any -> $HOME_NET 3389 (msg:"ARGOS LATERAL MOVEMENT RDP Brute Force multiples intentos mismo destino"; flow:to_server; threshold:type threshold,track by_dst,count 10,seconds 60; classtype:attempted-admin; sid:9000012; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1110.001, mitre_technique_name Brute_Force_Password_Guessing;)

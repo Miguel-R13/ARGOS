@@ -113,4 +113,26 @@
     <group>lateral_movement,ssh,</group>
   </rule>
 
+  <!-- SURICATA-ESC09: RDP hacia multiples destinos lateral movement -->
+  <rule id="110011" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000011</field>
+    <description>ARGOS SURICATA-ESC09: Movimiento lateral RDP detectado, multiples conexiones hacia destinos internos puerto 3389 (T1021.001)</description>
+    <mitre>
+      <id>T1021.001</id>
+    </mitre>
+    <group>lateral_movement,rdp,</group>
+  </rule>
+
+  <!-- SURICATA-ESC09b: RDP Brute Force mismo destino -->
+  <rule id="110012" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000012</field>
+    <description>ARGOS SURICATA-ESC09b: RDP Brute Force detectado, multiples intentos contra mismo destino puerto 3389 (T1110.001)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>lateral_movement,rdp,brute_force,</group>
+  </rule>
+
 </group>
