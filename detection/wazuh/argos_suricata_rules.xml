@@ -91,4 +91,15 @@
     <group>c2,icmp_tunneling,</group>
   </rule>
 
+  <!-- SURICATA-ESC07: Long Connection TCP beaconing persistente -->
+  <rule id="110009" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000009</field>
+    <description>ARGOS SURICATA-ESC07: Long Connection TCP detectada, beaconing persistente hacia zona atacantes, canal C2 activo (T1571)</description>
+    <mitre>
+      <id>T1571</id>
+    </mitre>
+    <group>c2,beaconing,long_connection,</group>
+  </rule>
+
 </group>

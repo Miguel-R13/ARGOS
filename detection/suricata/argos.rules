@@ -90,3 +90,14 @@ alert dns $HOME_NET any -> any 53 (msg:"ARGOS C2 DNS Tunneling subdominio largo 
 # datos embebidos. Cubre icmpsh, ptunnel y herramientas similares.
 # ============================================================
 alert icmp $HOME_NET any -> any any (msg:"ARGOS C2 ICMP Tunneling payload anomalo mayor 100 bytes"; itype:8; dsize:>100; classtype:command-and-control; sid:9000008; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1095, mitre_technique_name Non_Application_Layer_Protocol;)
+
+# ============================================================
+# ARGOS-NET-07 | C2 | Long Connection TCP beaconing persistente
+# ============================================================
+# MITRE: T1571 - Non-Standard Port | TA0011 - Command and Control
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta beaconing persistente: multiples paquetes TCP
+# desde el mismo origen hacia zona atacantes en ventana de 60 segundos.
+# Invariante de RAT activo manteniendo canal C2 abierto.
+# ============================================================
+alert tcp 192.168.234.20,192.168.234.30 any -> 192.168.234.40 any (msg:"ARGOS C2 Long Connection TCP beaconing persistente hacia zona atacantes"; flow:established,to_server; detection_filter:track by_src,count 5,seconds 60; classtype:command-and-control; sid:9000009; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1571, mitre_technique_name Non_Standard_Port;)
