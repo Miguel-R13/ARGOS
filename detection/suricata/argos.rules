@@ -79,3 +79,14 @@ alert http $HOME_NET any -> $HOME_NET any (msg:"ARGOS C2 HTTP Beaconing en SOC L
 # Cubre dnscat2, iodine y cualquier herramienta que codifique datos en DNS.
 # ============================================================
 alert dns $HOME_NET any -> any 53 (msg:"ARGOS C2 DNS Tunneling subdominio largo mayor 30 caracteres"; dns.query; pcre:"/^[^.]{30,}\./i"; classtype:command-and-control; sid:9000007; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1071.004, mitre_technique_name DNS;)
+
+# ============================================================
+# ARGOS-NET-06 | C2 | ICMP Tunneling payload anomalo
+# ============================================================
+# MITRE: T1095 - Non-Application Layer Protocol | TA0011 - Command and Control
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta ICMP tunneling por payload anormalmente grande.
+# Ping legitimo usa 56-64 bytes. Payload mayor de 100 bytes indica
+# datos embebidos. Cubre icmpsh, ptunnel y herramientas similares.
+# ============================================================
+alert icmp $HOME_NET any -> any any (msg:"ARGOS C2 ICMP Tunneling payload anomalo mayor 100 bytes"; itype:8; dsize:>100; classtype:command-and-control; sid:9000008; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1095, mitre_technique_name Non_Application_Layer_Protocol;)

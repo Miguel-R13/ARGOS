@@ -80,4 +80,15 @@
     <group>c2,dns_tunneling,</group>
   </rule>
 
+  <!-- SURICATA-ESC06: ICMP Tunneling payload anomalo -->
+  <rule id="110008" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000008</field>
+    <description>ARGOS SURICATA-ESC06: ICMP Tunneling detectado, payload mayor de 100 bytes, posible canal C2 via ICMP (T1095)</description>
+    <mitre>
+      <id>T1095</id>
+    </mitre>
+    <group>c2,icmp_tunneling,</group>
+  </rule>
+
 </group>
