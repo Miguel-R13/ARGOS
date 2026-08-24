@@ -34,3 +34,26 @@ alert tcp any any -> $HOME_NET any (msg:"ARGOS RECON TCP SYN Port Scan - Generic
 
 # ============================================================
 alert ssh any any -> $HOME_NET 22 (msg:"ARGOS INITIAL ACCESS SSH Brute Force Non-Standard Client Banner"; flow:established,to_server; ssh.software; content:!"OpenSSH"; classtype:attempted-admin; sid:9000003; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0001, mitre_tactic_name Initial_Access, mitre_technique_id T1110.001, mitre_technique_name Brute_Force_Password_Guessing;)
+
+# ============================================================
+# ARGOS-NET-03 | C2 | Reverse Shell TCP hacia zona atacantes interna
+# ============================================================
+# MITRE: T1059.004 - Unix Shell | TA0011 - Command and Control
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta conexion TCP establecida desde endpoints internos
+# hacia la zona de atacantes (.40). Cualquier conexion desde .20/.30
+# hacia .40 es sospechosa por definicion en el laboratorio ARGOS.
+# ============================================================
+alert tcp 192.168.234.20,192.168.234.30 any -> 192.168.234.40 any (msg:"ARGOS C2 Reverse Shell TCP hacia zona atacantes interna"; flow:established,to_server; classtype:command-and-control; sid:9000004; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1059.004, mitre_technique_name Unix_Shell;)
+
+# ============================================================
+# ARGOS-NET-03b | C2 | Reverse Shell TCP hacia IP externa puerto no estandar
+# ============================================================
+# MITRE: T1059.004 - Unix Shell | TA0011 - Command and Control
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta conexion TCP establecida desde endpoints internos
+# hacia cualquier IP externa en puertos no estandar (excluye puertos
+# de servicios legitimos: 22, 80, 443, 1514, 1515, 55000).
+# Cubre reverse shells hacia C2 en internet.
+# ============================================================
+alert tcp 192.168.234.20,192.168.234.30 any -> !192.168.234.0/24 ![$HTTP_PORTS,22,443,1514,1515,55000] (msg:"ARGOS C2 Reverse Shell TCP hacia IP externa puerto no estandar"; flow:established,to_server; classtype:command-and-control; sid:9000005; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1059.004, mitre_technique_name Unix_Shell;)

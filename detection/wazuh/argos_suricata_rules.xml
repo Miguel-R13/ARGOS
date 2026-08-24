@@ -36,4 +36,26 @@
     <group>initial_access,brute_force,</group>
   </rule>
 
+  <!-- SURICATA-ESC03: Reverse Shell TCP hacia zona atacantes interna -->
+  <rule id="110004" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature">ARGOS C2 Reverse Shell TCP hacia zona atacantes interna</field>
+    <description>ARGOS SURICATA-ESC03: Reverse shell TCP detectado desde endpoint hacia zona atacantes interna - C2 activo (T1059.004)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>c2,reverse_shell,</group>
+  </rule>
+
+  <!-- SURICATA-ESC03b: Reverse Shell TCP hacia IP externa -->
+  <rule id="110005" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature">ARGOS C2 Reverse Shell TCP hacia IP externa puerto no estandar</field>
+    <description>ARGOS SURICATA-ESC03b: Reverse shell TCP detectado desde endpoint hacia IP externa en puerto no estandar - C2 externo activo (T1059.004)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>c2,reverse_shell,</group>
+  </rule>
+
 </group>
