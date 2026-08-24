@@ -102,4 +102,15 @@
     <group>c2,beaconing,long_connection,</group>
   </rule>
 
+  <!-- SURICATA-ESC08: Lateral Movement SSH hacia multiples destinos -->
+  <rule id="110010" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000010</field>
+    <description>ARGOS SURICATA-ESC08: Movimiento lateral SSH detectado, endpoint iniciando conexiones SSH hacia multiples destinos internos (T1021.004)</description>
+    <mitre>
+      <id>T1021.004</id>
+    </mitre>
+    <group>lateral_movement,ssh,</group>
+  </rule>
+
 </group>

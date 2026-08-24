@@ -101,3 +101,14 @@ alert icmp $HOME_NET any -> any any (msg:"ARGOS C2 ICMP Tunneling payload anomal
 # Invariante de RAT activo manteniendo canal C2 abierto.
 # ============================================================
 alert tcp 192.168.234.20,192.168.234.30 any -> 192.168.234.40 any (msg:"ARGOS C2 Long Connection TCP beaconing persistente hacia zona atacantes"; flow:established,to_server; detection_filter:track by_src,count 5,seconds 60; classtype:command-and-control; sid:9000009; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1571, mitre_technique_name Non_Standard_Port;)
+
+# ============================================================
+# ARGOS-NET-08 | LATERAL MOVEMENT | SSH hacia multiples destinos internos
+# ============================================================
+# MITRE: T1021.004 - Remote Services SSH | TA0008 - Lateral Movement
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta endpoint comprometido realizando SSH hacia multiples
+# destinos internos. Threshold: 3 conexiones TCP:22 en 60 segundos
+# desde el mismo origen. Ningún usuario legitimo hace SSH masivo interno.
+# ============================================================
+alert tcp $HOME_NET any -> $HOME_NET 22 (msg:"ARGOS LATERAL MOVEMENT SSH hacia multiples destinos internos"; flow:to_server; threshold:type threshold,track by_src,count 3,seconds 60; classtype:attempted-admin; sid:9000010; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1021.004, mitre_technique_name Remote_Services_SSH;)
