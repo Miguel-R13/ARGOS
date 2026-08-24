@@ -57,3 +57,25 @@ alert tcp 192.168.234.20,192.168.234.30 any -> 192.168.234.40 any (msg:"ARGOS C2
 # Cubre reverse shells hacia C2 en internet.
 # ============================================================
 alert tcp 192.168.234.20,192.168.234.30 any -> !192.168.234.0/24 ![$HTTP_PORTS,22,443,1514,1515,55000] (msg:"ARGOS C2 Reverse Shell TCP hacia IP externa puerto no estandar"; flow:established,to_server; classtype:command-and-control; sid:9000005; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1059.004, mitre_technique_name Unix_Shell;)
+
+# ============================================================
+# ARGOS-NET-04 | C2 | HTTP Beaconing User-Agent anomalo en SOC LAN
+# ============================================================
+# MITRE: T1071.001 - Web Protocols | TA0011 - Command and Control
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta cualquier trafico HTTP en la SOC LAN 192.168.234.0/24.
+# En este entorno no existe trafico HTTP legitimo entre zonas en ens33.
+# Cualquier HTTP en ens33 es indicador de C2 o beaconing.
+# ============================================================
+alert http $HOME_NET any -> $HOME_NET any (msg:"ARGOS C2 HTTP Beaconing en SOC LAN, trafico HTTP anomalo entre zonas"; flow:established,to_server; classtype:command-and-control; sid:9000006; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1071.001, mitre_technique_name Web_Protocols;)
+
+# ============================================================
+# ARGOS-NET-05 | C2 | DNS Tunneling subdominio largo
+# ============================================================
+# MITRE: T1071.004 - DNS | TA0011 - Command and Control
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
+# Descripcion: Detecta DNS tunneling por longitud anomala del subdominio.
+# Subdominios de mas de 30 caracteres son invariante de tunneling.
+# Cubre dnscat2, iodine y cualquier herramienta que codifique datos en DNS.
+# ============================================================
+alert dns $HOME_NET any -> any 53 (msg:"ARGOS C2 DNS Tunneling subdominio largo mayor 30 caracteres"; dns.query; pcre:"/^[^.]{30,}\./i"; classtype:command-and-control; sid:9000007; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1071.004, mitre_technique_name DNS;)

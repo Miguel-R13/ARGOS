@@ -58,4 +58,26 @@
     <group>c2,reverse_shell,</group>
   </rule>
 
+  <!-- SURICATA-ESC04: HTTP Beaconing en SOC LAN -->
+  <rule id="110006" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000006</field>
+    <description>ARGOS SURICATA-ESC04: Trafico HTTP anomalo detectado en SOC LAN, posible canal C2 via HTTP (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>c2,beaconing,</group>
+  </rule>
+
+  <!-- SURICATA-ESC05: DNS Tunneling subdominio largo -->
+  <rule id="110007" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000007</field>
+    <description>ARGOS SURICATA-ESC05: DNS Tunneling detectado, subdominio de mas de 30 caracteres, posible canal C2 via DNS (T1071.004)</description>
+    <mitre>
+      <id>T1071.004</id>
+    </mitre>
+    <group>c2,dns_tunneling,</group>
+  </rule>
+
 </group>
