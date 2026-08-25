@@ -102,15 +102,13 @@
     <group>c2,beaconing,long_connection,</group>
   </rule>
 
-  <!-- SURICATA-ESC08: Lateral Movement SSH hacia multiples destinos -->
-  <rule id="110010" level="13">
-    <if_sid>86601</if_sid>
-    <field name="alert.signature_id">9000010</field>
-    <description>ARGOS SURICATA-ESC08: Movimiento lateral SSH detectado, endpoint iniciando conexiones SSH hacia multiples destinos internos (T1021.004)</description>
-    <mitre>
-      <id>T1021.004</id>
-    </mitre>
-    <group>lateral_movement,ssh,</group>
+  <!-- Supresion ESC08 cuando hay port scan activo ESC13 desde mismo origen -->
+  <rule id="110017" level="0">
+    <if_sid>110010</if_sid>
+    <if_matched_sid>110016</if_matched_sid>
+    <same_source_ip/>
+    <description>ARGOS: Supresion ESC08 SSH lateral, origen coincide con port scan ESC13 activo - falso positivo por nmap</description>
+    <options>no_full_log</options>
   </rule>
 
   <!-- SURICATA-ESC09: RDP hacia multiples destinos lateral movement -->
@@ -166,6 +164,17 @@
       <id>T1550.002</id>
     </mitre>
     <group>lateral_movement,pass_the_hash,ntlm,</group>
+  </rule>
+
+  <!-- SURICATA-ESC13: Port Scan interno desde endpoint comprometido -->
+  <rule id="110016" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000016</field>
+    <description>ARGOS SURICATA-ESC13: Port scan interno detectado desde endpoint comprometido, reconocimiento previo a movimiento lateral (T1046)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>lateral_movement,network_scan,</group>
   </rule>
 
 </group>

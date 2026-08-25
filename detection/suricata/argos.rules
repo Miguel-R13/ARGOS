@@ -170,3 +170,16 @@ alert tcp any any -> $HOME_NET 135 (msg:"ARGOS LATERAL MOVEMENT WMI RPC multiple
 # donde no deberia haber autenticacion es invariante de Pass-the-Hash.
 # ============================================================
 alert tcp $HOME_NET any -> $HOME_NET 445 (msg:"ARGOS LATERAL MOVEMENT Pass-the-Hash NTLM autenticacion SMB anomala"; flow:established,to_server; content:"NTLMSSP"; classtype:attempted-admin; sid:9000015; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1550.002, mitre_technique_name Pass_the_Hash;)
+
+# ============================================================
+# ARGOS-NET-13 | LATERAL MOVEMENT | Port Scan interno desde endpoint comprometido
+# ============================================================
+# MITRE: T1046 - Network Service Discovery | TA0008 - Lateral Movement
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-25
+# Descripcion: Detecta escaneo de puertos interno desde endpoints
+# comprometidos (.20/.30) hacia otros hosts de la SOC LAN.
+# Complementa ESC01/ESC01b que detectan escaneos desde zona atacantes.
+# Cuando el origen es un endpoint interno el nivel de severidad es mayor
+# porque indica que la red ya fue penetrada y el atacante se mueve lateralmente.
+# ============================================================
+alert tcp 192.168.234.20,192.168.234.30 any -> $HOME_NET any (msg:"ARGOS LATERAL MOVEMENT Port Scan interno desde endpoint comprometido"; flags:S,12; threshold:type threshold,track by_src,count 20,seconds 3; classtype:network-scan; sid:9000016; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1046, mitre_technique_name Network_Service_Discovery;)
