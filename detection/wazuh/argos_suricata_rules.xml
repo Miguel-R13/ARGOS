@@ -177,4 +177,26 @@
     <group>lateral_movement,network_scan,</group>
   </rule>
 
+  <!-- SURICATA-ESC14: Exfiltracion por volumen via flow events -->
+  <rule id="110018" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000017</field>
+    <description>ARGOS SURICATA-ESC14: Exfiltracion detectada, transferencia TCP masiva desde endpoint hacia exterior (T1048)</description>
+    <mitre>
+      <id>T1048</id>
+    </mitre>
+    <group>exfiltration,data_transfer,</group>
+  </rule>
+
+  <!-- SURICATA-ESC15: FTP saliente -->
+  <rule id="110019" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000018</field>
+    <description>ARGOS SURICATA-ESC15: FTP detectado en la red, protocolo inseguro de transferencia de ficheros, posible exfiltracion (T1048.003)</description>
+    <mitre>
+      <id>T1048.003</id>
+    </mitre>
+    <group>exfiltration,ftp,</group>
+  </rule>
+
 </group>

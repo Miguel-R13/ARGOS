@@ -40,9 +40,9 @@ alert ssh any any -> $HOME_NET 22 (msg:"ARGOS INITIAL ACCESS SSH Brute Force Non
 # ============================================================
 # MITRE: T1059.004 - Unix Shell | TA0011 - Command and Control
 # Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-24
-# Descripcion: Detecta conexion TCP establecida desde endpoints internos
-# hacia la zona de atacantes (.40). Cualquier conexion desde .20/.30
-# hacia .40 es sospechosa por definicion en el laboratorio ARGOS.
+# Descripcion: Detecta conexion TCP desde endpoints hacia zona .40.
+# Cualquier conexion .20/.30 -> .40 es sospechosa por definicion
+# en el laboratorio ARGOS.
 # ============================================================
 alert tcp 192.168.234.20,192.168.234.30 any -> 192.168.234.40 any (msg:"ARGOS C2 Reverse Shell TCP hacia zona atacantes interna"; flow:established,to_server; classtype:command-and-control; sid:9000004; rev:1; metadata:created_at 2026_08_24, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1059.004, mitre_technique_name Unix_Shell;)
 
@@ -183,3 +183,28 @@ alert tcp $HOME_NET any -> $HOME_NET 445 (msg:"ARGOS LATERAL MOVEMENT Pass-the-H
 # porque indica que la red ya fue penetrada y el atacante se mueve lateralmente.
 # ============================================================
 alert tcp 192.168.234.20,192.168.234.30 any -> $HOME_NET any (msg:"ARGOS LATERAL MOVEMENT Port Scan interno desde endpoint comprometido"; flags:S,12; threshold:type threshold,track by_src,count 20,seconds 3; classtype:network-scan; sid:9000016; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1046, mitre_technique_name Network_Service_Discovery;)
+
+# ============================================================
+# ARGOS-NET-14 | EXFILTRATION | Transferencia masiva de datos TCP hacia exterior
+# ============================================================
+# MITRE: T1048 - Exfiltration Over Alternative Protocol | TA0010 - Exfiltration
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-25
+# Descripcion: Detecta exfiltracion por volumen: transferencia TCP masiva
+# desde endpoints hacia IPs externas a la SOC LAN.
+# Excluye trafico hacia HOME_NET para evitar solape con ESC03/ESC07.
+# Excluye puertos legitimos: 22, 80, 443, 1514.
+# detection_filter: 1000 paquetes en 60s para reducir ruido.
+# ============================================================
+alert tcp 192.168.234.20,192.168.234.30 any -> !192.168.234.0/24 ![22,80,443,1514] (msg:"ARGOS EXFILTRATION Flujo TCP masivo desde endpoint hacia IP externa"; flow:established,to_server; dsize:>1000; detection_filter:track by_src,count 1000,seconds 60; classtype:policy-violation; sid:9000017; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0010, mitre_tactic_name Exfiltration, mitre_technique_id T1048, mitre_technique_name Exfiltration_Over_Alternative_Protocol;)
+
+# ============================================================
+# ARGOS-NET-15 | EXFILTRATION | FTP saliente desde endpoint
+# ============================================================
+# MITRE: T1048.003 - Exfiltration Over Unencrypted Protocol | TA0010 - Exfiltration
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-25
+# Descripcion: Detecta cualquier trafico FTP en la red.
+# FTP es un protocolo obsoleto e inseguro que no deberia existir
+# en ningun entorno corporativo moderno. Cualquier conexion al
+# puerto 21 desde cualquier origen es sospechosa por definicion.
+# ============================================================
+alert tcp any any -> any 21 (msg:"ARGOS EXFILTRATION FTP detectado en la red, protocolo inseguro de transferencia de ficheros"; flow:to_server; threshold:type limit,track by_src,count 1,seconds 60; classtype:policy-violation; sid:9000018; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0010, mitre_tactic_name Exfiltration, mitre_technique_id T1048.003, mitre_technique_name Exfiltration_Over_Unencrypted_Protocol;)
