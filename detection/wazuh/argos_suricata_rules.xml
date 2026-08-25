@@ -199,4 +199,15 @@
     <group>exfiltration,ftp,</group>
   </rule>
 
+  <!-- SURICATA-ESC16: Exfiltracion via SMB hacia exterior -->
+  <rule id="110020" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature_id">9000019</field>
+    <description>ARGOS SURICATA-ESC16: SMB hacia exterior detectado, posible exfiltracion via recurso compartido externo (T1048)</description>
+    <mitre>
+      <id>T1048</id>
+    </mitre>
+    <group>exfiltration,smb,</group>
+  </rule>
+
 </group>

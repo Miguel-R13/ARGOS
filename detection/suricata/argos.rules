@@ -208,3 +208,60 @@ alert tcp 192.168.234.20,192.168.234.30 any -> !192.168.234.0/24 ![22,80,443,151
 # puerto 21 desde cualquier origen es sospechosa por definicion.
 # ============================================================
 alert tcp any any -> any 21 (msg:"ARGOS EXFILTRATION FTP detectado en la red, protocolo inseguro de transferencia de ficheros"; flow:to_server; threshold:type limit,track by_src,count 1,seconds 60; classtype:policy-violation; sid:9000018; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0010, mitre_tactic_name Exfiltration, mitre_technique_id T1048.003, mitre_technique_name Exfiltration_Over_Unencrypted_Protocol;)
+
+# ============================================================
+# ARGOS-NET-16 | EXFILTRATION | SMB hacia exterior
+# ============================================================
+# MITRE: T1048 - Exfiltration Over Alternative Protocol | TA0010 - Exfiltration
+# Author: ARGOS SOC - Miguel Reguero | Created: 2026-08-25
+# Descripcion: Detecta conexiones SMB desde endpoints hacia IPs externas
+# a la SOC LAN. SMB no deberia salir de la red interna bajo ninguna
+# circunstancia. Tecnica documentada en APTs como Lazarus y APT29.
+# Threshold: 3 conexiones en 60 segundos desde el mismo origen.
+# ============================================================
+alert tcp 192.168.234.20,192.168.234.30 any -> !192.168.234.0/24 445 (msg:"ARGOS EXFILTRATION SMB hacia exterior, posible exfiltracion via recurso compartido externo"; flow:to_server; threshold:type threshold,track by_src,count 3,seconds 60; classtype:policy-violation; sid:9000019; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0010, mitre_tactic_name Exfiltration, mitre_technique_id T1048, mitre_technique_name Exfiltration_Over_Alternative_Protocol;)
+
+# ============================================================
+# ============================================================
+# ARGOS IPS - MODO ACTIVO: REGLAS DROP SELECTIVO
+# ============================================================
+# Las siguientes reglas bloquean activamente el trafico en lugar
+# de solo alertar (IDS). Solo se aplica drop a vectores con
+# certeza absoluta y minimo riesgo de falso positivo en ARGOS.
+# Criterio SOC: si el vector no tiene uso legitimo posible -> drop.
+# Vectores en drop: ESC02, ESC03, ESC04, ESC05, ESC06, ESC12, ESC15, ESC16
+# Vectores solo alert: ESC01, ESC07, ESC08, ESC09, ESC10, ESC11, ESC13, ESC14
+# ============================================================
+# ============================================================
+
+# DROP ESC02: SSH Brute Force banner no estandar
+# Certeza alta: cliente SSH no OpenSSH intentando autenticacion masiva
+drop tcp any any -> $HOME_NET 22 (msg:"ARGOS IPS DROP ESC02 SSH Brute Force banner no estandar bloqueado"; flow:established,to_server; content:"SSH-"; depth:4; pcre:"/^SSH-[\d.]+-(?!OpenSSH)/"; threshold:type threshold,track by_src,count 5,seconds 60; classtype:attempted-admin; sid:9000025; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0006, mitre_tactic_name Credential_Access, mitre_technique_id T1110.001, mitre_technique_name Brute_Force_Password_Guessing;)
+
+# DROP ESC03: Reverse Shell TCP hacia zona atacantes interna
+# Certeza absoluta: ningun trafico legitimo va de .20/.30 hacia .40
+drop tcp 192.168.234.20,192.168.234.30 any -> 192.168.234.40 any (msg:"ARGOS IPS DROP ESC03 Reverse Shell TCP hacia zona atacantes bloqueado"; flow:established,to_server; classtype:command-and-control; sid:9000026; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1059.004, mitre_technique_name Unix_Shell;)
+
+# DROP ESC04: HTTP Beaconing en SOC LAN
+# Certeza absoluta: HTTP no deberia existir en ens33 bajo ninguna circunstancia
+drop http $HOME_NET any -> $HOME_NET any (msg:"ARGOS IPS DROP ESC04 HTTP Beaconing en SOC LAN bloqueado"; flow:established,to_server; classtype:command-and-control; sid:9000027; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1071.001, mitre_technique_name Web_Protocols;)
+
+# DROP ESC05: DNS Tunneling subdominio largo
+# Certeza absoluta: subdominios de mas de 30 caracteres sin uso legitimo
+drop dns $HOME_NET any -> any 53 (msg:"ARGOS IPS DROP ESC05 DNS Tunneling subdominio largo bloqueado"; dns.query; pcre:"/^[^.]{30,}\./i"; classtype:command-and-control; sid:9000022; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1071.004, mitre_technique_name DNS;)
+
+# DROP ESC06: ICMP Tunneling payload anomalo
+# Certeza absoluta: payload ICMP mayor 100 bytes sin uso legitimo en ARGOS
+drop icmp any any -> any any (msg:"ARGOS IPS DROP ESC06 ICMP Tunneling payload anomalo bloqueado"; itype:8; dsize:>100; classtype:command-and-control; sid:9000023; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0011, mitre_tactic_name Command_And_Control, mitre_technique_id T1095, mitre_technique_name Non_Application_Layer_Protocol;)
+
+# DROP ESC12: Pass-the-Hash NTLMSSP en SMB
+# Certeza alta: autenticacion NTLM en SMB desde endpoints anomala en ARGOS
+drop tcp $HOME_NET any -> $HOME_NET 445 (msg:"ARGOS IPS DROP ESC12 Pass-the-Hash NTLM SMB bloqueado"; flow:established,to_server; content:"NTLMSSP"; classtype:attempted-admin; sid:9000024; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0008, mitre_tactic_name Lateral_Movement, mitre_technique_id T1550.002, mitre_technique_name Pass_the_Hash;)
+
+# DROP ESC15: FTP en la red
+# Certeza absoluta: FTP no deberia existir en ningun entorno moderno
+drop tcp any any -> any 21 (msg:"ARGOS IPS DROP ESC15 FTP bloqueado, protocolo inseguro prohibido"; flow:to_server; threshold:type limit,track by_src,count 1,seconds 60; classtype:policy-violation; sid:9000020; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0010, mitre_tactic_name Exfiltration, mitre_technique_id T1048.003, mitre_technique_name Exfiltration_Over_Unencrypted_Protocol;)
+
+# DROP ESC16: SMB hacia exterior
+# Certeza absoluta: SMB no debe salir de la red interna bajo ninguna circunstancia
+drop tcp 192.168.234.20,192.168.234.30 any -> !192.168.234.0/24 445 (msg:"ARGOS IPS DROP ESC16 SMB hacia exterior bloqueado"; flow:to_server; threshold:type limit,track by_src,count 1,seconds 60; classtype:policy-violation; sid:9000021; rev:1; metadata:created_at 2026_08_25, author "ARGOS SOC - Miguel Reguero", mitre_tactic_id TA0010, mitre_tactic_name Exfiltration, mitre_technique_id T1048, mitre_technique_name Exfiltration_Over_Alternative_Protocol;)
