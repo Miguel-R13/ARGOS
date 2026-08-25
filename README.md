@@ -1,4 +1,5 @@
 # ARGOS · AI-Augmented SOC Detection & Response Platform
+
 > *"30+ correcciones documentadas donde la IA dejó gaps que un analista L1 tuvo que cerrar."*
 
 XDR open source con supervisión humana del modelo, construido desde cero sobre Wazuh.
@@ -15,14 +16,19 @@ Este es el núcleo de ARGOS. No un XDR bonito. Una demostración empírica de d�
 
 Si construyes un sistema de detección con Claude Pro sin un analista encima corrigiéndola constantemente, el resultado parece completo pero deja pasar los ataques reales. ARGOS lo demuestra empíricamente con más de 30 correcciones documentadas en el Capítulo 14 de la memoria del proyecto.
 
-**Algunos ejemplos reales:**
+**El patrón que se repite en cada capa: la IA siempre propone el mínimo visible, nunca el mínimo necesario.**
 
-- La IA propuso quitar una regla de movimiento lateral porque generaba falsos positivos. Un sistema que sacrifica cobertura para reducir ruido es más peligroso que uno que no detecta nada.
-- Para el bloque YARA propuso 4 reglas. El análisis sistemático de los 24 escenarios de la kill chain determinó que hacían falta 24. Sin ese análisis, más de la mitad de los vectores habrían quedado sin cubrir.
-- En las reglas YARA de LOLBAS propuso una regla genérica para todos los vectores. Un SOC profesional necesita granularidad: la alerta tiene que identificar qué LOLBAS se abusó para que el analista L1 sepa cómo responder.
-- Para mimikatz propuso una sola regla. Hay tres artefactos distintos con respuestas distintas: el script con comandos (se puede interceptar antes de ejecutar), el log con credenciales volcadas (el daño ya ocurrió), y el minidump de LSASS (compromiso total, cambiar todas las credenciales del dominio inmediatamente).
-- Para PowerShell ofuscado propuso cubrir solo EncodedCommand. Faltan SecureString, GZip/Deflate, AMSI bypass y string manipulation: cuatro técnicas frecuentes en Emotet, QakBot y APTs documentadas en 2024-2025.
-- Los strings de detección se limitaban al artefacto de laboratorio. Sin contrastar con Neo23x0, ANY.RUN/YARA y ReversingLabs, variantes reales documentadas en threat intelligence quedaban sin cubrir.
+La diferencia entre esos dos números es la superficie de ataque que el adversario puede explotar sin ser detectado. ARGOS lo cuantifica capa por capa:
+
+- **YARA: 4 reglas propuestas vs. 24 implementadas.** La IA propuso cubrir 4 artefactos. El análisis sistemático de la kill chain completa determinó 24 escenarios con artefacto en disco, cada uno con su regla propia. Con 4 reglas, el 83% de los vectores de contenido malicioso habrían quedado sin cobertura: ninguna detección de LOLBAS, ninguna detección de ofuscación PowerShell, ninguna detección de credential dumping en disco.
+
+- **Suricata C2 y beaconing: 3 vectores propuestos vs. 10 implementados.** La IA propuso reverse shell TCP, HTTP beaconing y DNS tunneling. El analista identificó 7 vectores adicionales documentados en campañas activas: ICMP tunneling, IRC (botnets), SMB como canal C2 (APT29, Lazarus), JA3/JA3S fingerprinting TLS, beaconing periódico, long connection y low-and-slow. Con 3 vectores, el 70% de los canales C2 reales documentados en threat intelligence de 2024-2025 habrían pasado sin detección.
+
+- **Suricata movimiento lateral: 3 vectores propuestos vs. 6 implementados.** La IA propuso SSH lateral, RDP brute force y SMB anómalo. El analista añadió WMI/RPC (técnica principal de APTs en entornos Windows sin antivirus), Pass-the-Hash vía inspección de payload NTLMSSP, y port scan interno desde endpoint comprometido. Sin estos tres, un atacante que ya está dentro usando técnicas de living-off-the-land habría completado el movimiento lateral sin una sola alerta de red.
+
+- **Suricata IPS: 2 drops propuestos vs. 8 implementados.** La IA propuso bloqueo activo solo para FTP y SMB exterior. El analista identificó 6 vectores adicionales con certeza suficiente para drop inmediato: reverse shell TCP confirmada hacia zona atacantes, HTTP en SOC LAN donde no debería existir, DNS tunneling, ICMP tunneling y Pass-the-Hash. Con 2 drops, un reverse shell activo, un canal C2 HTTP y un ataque de DNS tunneling habrían seguido funcionando mientras el analista procesaba las alertas.
+
+- **Mimikatz: 1 regla propuesta vs. 3 implementadas con respuestas de incidente distintas.** La IA propuso una sola regla genérica. El analista identificó tres artefactos con respuestas radicalmente distintas: el script con comandos (intercepción posible antes de ejecutar), el log con credenciales volcadas (daño ocurrido, contención inmediata) y el minidump de LSASS (compromiso total: cambio de todas las credenciales del dominio sin excepción, incluyendo cuentas de servicio y administrador). Una regla genérica habría enviado al analista L1 la misma alerta para los tres casos, sin indicar que en uno de ellos el dominio entero está comprometido.
 
 **El analista L1 no va a desaparecer. Va a dejar de mirar logs para convertirse en quien valida, interroga y corrige a la IA. ARGOS documenta exactamente eso.**
 
@@ -32,7 +38,7 @@ Si construyes un sistema de detección con Claude Pro sin un analista encima cor
 
 **ARGOS rebate la tesis de que el analista L1 va a desaparecer por la IA.**
 
-El Capítulo 14 de la memoria del proyecto demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas, cobertura YARA insuficiente.
+El Capítulo 14 de la memoria del proyecto demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas, cobertura YARA insuficiente, arquitectura de detección de red incompleta.
 
 La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente lo que ARGOS documenta.
 
@@ -40,12 +46,13 @@ La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente 
 
 ## Lo que diferencia a ARGOS
 
-- **Detección original, no copiada.** Cada regla de detección nace de un ataque real ejecutado en laboratorio. Los repositorios de referencia (SigmaHQ para comportamiento, Neo23x0/ANY.RUN/ReversingLabs para contenido YARA) se usan para identificar gaps, no para copiar lo que ya existe.
+- **Detección original, no copiada.** Cada regla de detección nace de un ataque real ejecutado en laboratorio. Los repositorios de referencia (SigmaHQ para comportamiento, Neo23x0/ANY.RUN/ReversingLabs para contenido YARA, ET Open para red) se usan para identificar gaps, no para copiar lo que ya existe.
 - **Ningún campo se asume.** El ataque se simula primero, se analiza la telemetría, y solo entonces se escribe la regla. Nunca al revés.
 - **Human-in-the-loop documentado.** El analista no solo supervisa alertas: supervisa la lógica de detección, identifica sus gaps y aprueba las acciones de respuesta. El Capítulo 14 registra cada corrección técnica donde el criterio profesional superó a la herramienta.
-- **Kill chain completa, no escenarios aislados.** 24 escenarios en dos bloques: Linux (ESC01-ESC10) y Windows (ESC11-ESC24), desde el reconocimiento hasta la exfiltración y el credential dumping.
+- **Kill chain completa, no escenarios aislados.** 24 escenarios Sigma/XML en dos bloques: Linux (ESC01-ESC10) y Windows (ESC11-ESC24). 21 escenarios Suricata cubriendo las 5 capas de la kill chain de red.
 - **Evidencia de cada paso.** Cada escenario tiene capturas del ataque, la telemetría, el alerts.log y el dashboard. Nada sin validar.
-- **Detección multicapa.** Comportamiento (Sigma/XML), contenido (YARA), red (Suricata) y triaje IA (Ollama) como capas complementarias e independientes.
+- **Detección multicapa.** Comportamiento (Sigma/XML), contenido (YARA), red (Suricata IDS/IPS) y triaje IA (Ollama) como capas complementarias e independientes.
+- **IDS + IPS.** Suricata opera en modo activo: 19 reglas alert para visibilidad y 8 reglas drop para bloqueo selectivo de vectores con certeza absoluta.
 
 ---
 
@@ -102,7 +109,7 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | Telemetría Windows - procesos | **Sysmon v15** (SwiftOnSecurity config) |
 | Telemetría Windows - scripts | **ScriptBlock Logging** (Event ID 4104) |
 | Telemetría Windows - autenticación | **Security Event Log** (EID 4625, 4624, 4698, 5157...) |
-| Detección de red | **Suricata** IDS/IPS ✅ |
+| Detección de red | **Suricata IDS/IPS** · 27 reglas · 5 capas kill chain ✅ |
 | Triaje IA | **Ollama** · Mistral 7B / LLaMA 3 8B, 100% local 🔨 |
 | Automatización | **Python** · Playbooks SOAR 🔨 |
 | Alertas | **Telegram** 🔨 |
@@ -178,6 +185,39 @@ El artefacto se crea en el endpoint. La alerta 103xxx dispara. Se documenta con 
 
 ---
 
+## Proceso de validación · Los 9 puntos de cada escenario Suricata
+
+Ninguna regla Suricata de ARGOS existe sin pasar por estos 9 puntos. No hay excepciones.
+
+**1. Contexto de la amenaza**
+Qué tráfico de red genera el escenario y cómo complementa las capas de endpoint.
+
+**2. Gap en ET Open**
+Qué existe en ET Open, qué queda sin cubrir y por qué importa ese gap. ARGOS no crea reglas donde ya existe cobertura suficiente.
+
+**3. Patrones invariantes empíricos**
+El ataque se ejecuta y se captura el tráfico con tcpdump. Ningún campo se asume. Los invariantes son los que aparecen en el tráfico real.
+
+**4. Qué consigue ARGOS**
+Qué cobertura añade respecto a ET Open y qué contexto MITRE proporciona al analista L1.
+
+**5. Limitaciones y falsos positivos documentados**
+Qué deja sin cubrir, qué puede generar ruido y bajo qué condiciones requeriría ajuste.
+
+**6. Regla Suricata**
+Escrita con los patrones validados en `/etc/suricata/rules/argos/argos.rules`, validada con `suricata -T`.
+
+**7. Integración con Wazuh via regla XML**
+Eve.json → logcollector → decoder Suricata → regla 86601 + regla específica 110xxx en dashboard.
+
+**8. Relación con la kill chain**
+Cómo encaja en la secuencia de ataque y cómo se correlaciona con las capas de endpoint.
+
+**9. Validación empírica**
+El ataque se ejecuta. La alerta dispara. Se documenta con 4 capturas: ATK, PCAP, LOG y DASH.
+
+---
+
 ## Escenarios de ataque validados
 
 ### Bloque Linux · Endpoint 192.168.234.30 · Kill chain completa
@@ -248,6 +288,30 @@ El artefacto se crea en el endpoint. La alerta 103xxx dispara. Se documenta con 
 | YARA-23 | PowerShell AMSI bypass | ESC24 | Defense Evasion | T1562.001 | ✅ |
 | YARA-24 | PowerShell string manipulation obfuscation | ESC24 | Defense Evasion | T1027.010 | ✅ |
 
+### Bloque Suricata · Red 192.168.234.0/24 · 5 capas kill chain
+
+| # | Escenario | Capa | TTP MITRE ATT&CK | Modo | Estado |
+| --- | --- | --- | --- | --- | --- |
+| SURICATA-ESC01 | TCP SYN Port Scan nmap invariant win:1024 | Reconocimiento | T1046 | alert | ✅ |
+| SURICATA-ESC01b | Generic Scanner Threshold | Reconocimiento | T1046 | alert | ✅ |
+| SURICATA-ESC02 | SSH Brute Force banner no estandar | Acceso inicial | T1110.001 | alert+drop | ✅ |
+| SURICATA-ESC03 | Reverse Shell TCP hacia zona atacantes interna | C2 | T1059.004 | alert+drop | ✅ |
+| SURICATA-ESC03b | Reverse Shell TCP hacia IP externa | C2 | T1059.004 | alert | ✅ |
+| SURICATA-ESC04 | HTTP Beaconing en SOC LAN | C2 | T1071.001 | alert+drop | ✅ |
+| SURICATA-ESC05 | DNS Tunneling subdominio largo | C2 | T1071.004 | alert+drop | ✅ |
+| SURICATA-ESC06 | ICMP Tunneling payload anomalo | C2 | T1095 | alert+drop | ✅ |
+| SURICATA-ESC07 | Long Connection TCP beaconing persistente | C2 | T1571 | alert | ✅ |
+| SURICATA-ESC08 | SSH hacia multiples destinos internos | Movimiento lateral | T1021.004 | alert | ✅ |
+| SURICATA-ESC09 | RDP hacia multiples destinos internos | Movimiento lateral | T1021.001 | alert | ✅ |
+| SURICATA-ESC09b | RDP Brute Force mismo destino | Movimiento lateral | T1110.001 | alert | ✅ |
+| SURICATA-ESC10 | SMB anomalo entre endpoints | Movimiento lateral | T1021.002 | alert | ✅ |
+| SURICATA-ESC11 | WMI RPC puerto 135 | Movimiento lateral | T1047 | alert | ✅ |
+| SURICATA-ESC12 | Pass-the-Hash NTLMSSP SMB | Movimiento lateral | T1550.002 | alert+drop | ✅ |
+| SURICATA-ESC13 | Port scan interno desde endpoint comprometido | Movimiento lateral | T1046 | alert | ✅ |
+| SURICATA-ESC14 | Exfiltracion por volumen de datos TCP | Exfiltracion | T1048 | alert | ✅ |
+| SURICATA-ESC15 | FTP saliente, protocolo inseguro | Exfiltracion | T1048.003 | alert+drop | ✅ |
+| SURICATA-ESC16 | SMB hacia exterior | Exfiltracion | T1048 | alert+drop | ✅ |
+
 ---
 
 ## Estado y roadmap
@@ -262,7 +326,7 @@ El artefacto se crea en el endpoint. La alerta 103xxx dispara. Se documenta con 
 | Reglas XML Wazuh propias · bloque Windows ESC11-ESC24 | ✅ Completado |
 | Pipeline YARA · FIM + Active Response + decoder + reglas XML | ✅ Implementado |
 | Reglas YARA · 24 reglas completas (YARA-01 a YARA-24) | ✅ Completado |
-| Suricata IDS/IPS | ✅ Instalado y configurado · reglas en desarrollo |
+| Suricata IDS/IPS · 27 reglas · 5 capas kill chain · 8 drops | ✅ Completado |
 | Playbooks SOAR en Python | 🔨 En desarrollo |
 | Triaje con LLM local (Ollama) | 🔨 En desarrollo |
 | Alertas Telegram | 🔨 En desarrollo |
@@ -284,8 +348,10 @@ ARGOS/
 │   │   │   ├── argos_yara_scan.py      # Script AR Linux
 │   │   │   └── argos_yara_scan_win.py  # Script AR Windows
 │   │   ├── argos_yara_decoder.xml
-│   │   └── argos_yara_rules.xml        # Reglas 103000-103024
-│   ├── suricata/         # Reglas Suricata propias (.rules) · en desarrollo
+│   │   ├── argos_yara_rules.xml        # Reglas 103000-103024
+│   │   └── argos_suricata_rules.xml    # Reglas 110001-110020
+│   ├── suricata/               # Reglas Suricata propias · 27 reglas · 5 capas
+│   │   └── argos.rules         # 19 alert + 8 drop · IDS/IPS
 │   └── yara/
 │       ├── linux/              # 5 reglas YARA bloque Linux (YARA-01 a YARA-05)
 │       └── windows/            # 19 reglas YARA bloque Windows (YARA-06 a YARA-24)
@@ -306,6 +372,7 @@ ARGOS/
 - Python 3.11+
 - sigma-cli 3.0.3
 - YARA 4.5.5
+- Suricata 6.0.4+
 - Ollama con Mistral 7B o LLaMA 3 8B *(en desarrollo)*
 
 ---
@@ -313,10 +380,7 @@ ARGOS/
 ## Autor
 
 **Miguel Reguero** · Blue Team / SOC Analyst
-
 [LinkedIn](https://www.linkedin.com/in/miguel-reguero/) · [GitHub](https://github.com/Miguel-R13) · [Portfolio](https://miguel-r13.github.io)
 
 Máster en Ciberseguridad · IMMUNE × Universidad Nebrija × Banco Santander · Nota media 9,5/10
-
 Top 5% TryHackMe · Autor de [PhishGuard](https://github.com/Miguel-R13/Phishguard)
-```
