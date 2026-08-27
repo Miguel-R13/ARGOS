@@ -1,0 +1,15 @@
+[Unit]
+Description=ARGOS SOC - PB03 Brute Force RDP Integration
+After=wazuh-manager.service
+Requires=wazuh-manager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /var/ossec/integrations/argos_pb03_integration.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/ossec/logs/argos_pb03_integration.log
+StandardError=append:/var/ossec/logs/argos_pb03_integration.log
+
+[Install]
+WantedBy=multi-user.target
