@@ -29,7 +29,7 @@ import urllib.error
 from datetime import datetime
 
 # --- Configuracion ---
-TELEGRAM_BOT_TOKEN = "***REMOVED***"
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = "-5399235712"
 ALERTS_JSON = "/var/ossec/logs/alerts/alerts.json"
 SSH_KEY = "/var/ossec/.ssh/id_ed25519"

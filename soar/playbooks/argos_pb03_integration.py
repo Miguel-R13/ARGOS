@@ -34,7 +34,7 @@ except ImportError:
     sys.exit(1)
 
 # --- Configuracion ---
-TELEGRAM_BOT_TOKEN = "***REMOVED***"
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = "-5399235712"
 ALERTS_JSON = "/var/ossec/logs/alerts/alerts.json"
 
