@@ -1,0 +1,15 @@
+[Unit]
+Description=ARGOS SOC - PB01 Reverse Shell Integration
+After=wazuh-manager.service
+Requires=wazuh-manager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /var/ossec/integrations/argos_pb01_integration.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/ossec/logs/argos_pb01_integration.log
+StandardError=append:/var/ossec/logs/argos_pb01_integration.log
+
+[Install]
+WantedBy=multi-user.target
