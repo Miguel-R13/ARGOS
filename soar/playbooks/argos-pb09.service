@@ -1,0 +1,16 @@
+[Unit]
+Description=ARGOS SOC - PB09 LOLBAS Defense Evasion Integration
+After=wazuh-manager.service
+Requires=wazuh-manager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /var/ossec/integrations/argos_pb09_integration.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/ossec/logs/argos_pb09_integration.log
+StandardError=append:/var/ossec/logs/argos_pb09_integration.log
+
+[Install]
+WantedBy=multi-user.target
+
