@@ -1,0 +1,15 @@
+[Unit]
+Description=ARGOS SOC - PB04 Exfiltracion de datos Integration Windows
+After=wazuh-manager.service
+Requires=wazuh-manager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /var/ossec/integrations/argos_pb04_windows_integration.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/ossec/logs/argos_pb04_windows_integration.log
+StandardError=append:/var/ossec/logs/argos_pb04_windows_integration.log
+
+[Install]
+WantedBy=multi-user.target
