@@ -1,0 +1,14 @@
+[Unit]
+Description=ARGOS SSH Tunnel hacia Ollama en host Windows
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=argos
+ExecStart=/usr/bin/ssh -N -L 8888:127.0.0.1:11434 -i /home/argos/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 Payens@192.168.234.1
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
