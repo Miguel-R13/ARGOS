@@ -32,6 +32,8 @@ La diferencia entre esos dos números es la superficie de ataque que el adversar
 
 - **SOAR: 5 playbooks propuestos vs. 10 implementados, y arquitectura completamente rediseñada.** La IA propuso organizar los playbooks por regla de detección (un playbook por sensor) y usar un único script centralizado para los playbooks de escalado humano. El analista estableció que la arquitectura correcta es un playbook por escenario operativo (el analista L1 no distingue si la reverse shell la detectó Suricata, YARA o auditd: lo relevante es el escenario y la acción requerida) y scripts separados por plataforma (Linux vs. Windows) y por playbook (granularidad operativa, ciclos de vida independientes). Además la IA propuso Active Response de Wazuh como mecanismo de ejecución, y durante la implementación empírica se descubrió que no dispara correctamente para alertas de log_format:audit en Wazuh 4.9.2, requiriendo rediseño hacia el patrón de integration script que usan las integraciones oficiales de Wazuh.
 
+- **Triaje LLM: prompt engineering documentado con 25 iteraciones en 5 escenarios.** El pipeline LLM de ARGOS (Ollama + Mistral 7B local via SSH tunnel) requirió 25 iteraciones de corrección del prompt para alcanzar un triaje de calidad comparable a un analista L1 con experiencia media. Los fallos documentados incluyen: alucinaciones de IDs MITRE inexistentes (T1023, T1033.001), confusión sistemática entre playbooks de escalado humano (PB05 vs PB07), recomendación de terminar el proceso mimikatz.exe (acción peligrosa que el guardrail explícito tuvo que prohibir), reproducción de instrucciones internas del system prompt en el output, y degradación del rendimiento del modelo por acumulación de instrucciones contradictorias que requirió reescritura completa del prompt. La validación empírica con ataques reales del laboratorio confirmó que las alucinaciones de IDs MITRE ocurren también en producción: el mismo escenario LSASS procesado dos veces consecutivas produjo T1003.001 correcto en la primera alerta y T1033.001 inexistente en la segunda.
+
 **El analista L1 no va a desaparecer. Va a dejar de mirar logs para convertirse en quien valida, interroga y corrige a la IA. ARGOS documenta exactamente eso.**
 
 ---
@@ -40,7 +42,7 @@ La diferencia entre esos dos números es la superficie de ataque que el adversar
 
 **ARGOS rebate la tesis de que el analista L1 va a desaparecer por la IA.**
 
-El Capítulo 14 de la memoria del proyecto demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas, cobertura YARA insuficiente, arquitectura de detección de red incompleta, arquitectura SOAR mal diseñada.
+El Capítulo 14 de la memoria del proyecto demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas, cobertura YARA insuficiente, arquitectura de detección de red incompleta, arquitectura SOAR mal diseñada, y alucinaciones técnicas en el triaje LLM que contaminarían el registro del incidente.
 
 La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente lo que ARGOS documenta.
 
@@ -56,6 +58,7 @@ La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente 
 - **Detección multicapa.** Comportamiento (Sigma/XML), contenido (YARA), red (Suricata IDS/IPS) y triaje IA (Ollama) como capas complementarias e independientes.
 - **IDS + IPS.** Suricata opera en modo activo: 19 reglas alert para visibilidad y 8 reglas drop para bloqueo selectivo de vectores con certeza absoluta.
 - **SOAR operativo.** 10 playbooks Python cubriendo la kill chain completa: 4 de contencion activa (reverse shell, brute force SSH, brute force RDP, exfiltracion) y 6 de escalado humano (movimiento lateral, desactivacion de herramientas, persistencia, credential dumping, LOLBAS, beaconing C2).
+- **Triaje LLM local validado empiricamente.** Pipeline completo Wazuh alerts.json → Ollama/Mistral 7B via SSH tunnel cifrado → Telegram SOC. 25 iteraciones de prompt engineering documentadas en 5 escenarios. Validado con ataques reales del laboratorio. 100% local, sin datos enviados a APIs externas.
 
 ---
 
@@ -82,8 +85,16 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
                 │  Reglas YARA propias        │
                 │  Suricata IDS/IPS           │
                 │  SOAR Playbooks (Python)    │
-                │  Ollama LLM local           │
+                │  Ollama LLM tunnel          │
                 └──────────┬──────────────────┘
+                           │ SSH tunnel cifrado
+                           │ ED25519 key auth
+                    ┌──────▼──────┐
+                    │ Host Windows│
+                    │ Ollama      │
+                    │ Mistral 7B  │
+                    │ 127.0.0.1   │
+                    └─────────────┘
                            │
           ┌────────────────┼────────────────┐
           │                │                │
@@ -114,7 +125,7 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | Telemetria Windows - autenticacion | **Security Event Log** (EID 4625, 4624, 4698, 5157...) |
 | Deteccion de red | **Suricata IDS/IPS** · 27 reglas · 5 capas kill chain |
 | SOAR | **Python** · 10 playbooks · contencion activa + escalado humano · Telegram |
-| Triaje IA | **Ollama** · Mistral 7B / LLaMA 3 8B, 100% local (en desarrollo) |
+| Triaje IA | **Ollama** · Mistral 7B · 100% local · SSH tunnel cifrado · validado empiricamente |
 | Modulo de phishing | **PhishGuard** (en desarrollo) |
 | Framework de deteccion | **MITRE ATT&CK** |
 | Framework de respuesta | **NIST** IR lifecycle |
@@ -225,6 +236,18 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | PB09 | LOLBAS / Defense Evasion | ESC23/24 + YARA-16 al 24 | Escalado humano | ✅ |
 | PB10 | Beaconing / C2 red | SURICATA-ESC04/05/06/07 | Escalado humano | ✅ |
 
+### Triaje LLM · Pipeline Ollama local
+
+| Componente | Detalle |
+| --- | --- |
+| Modelo | Mistral 7B (inferencia CPU, 100% local) | ✅ |
+| Canal | SSH tunnel ED25519 · .10:8888 → Windows:11434 | ✅ |
+| Seguridad | OLLAMA_HOST=127.0.0.1, firewall Windows bloqueando puerto 11434, OpenSSH hardened | ✅ |
+| Script | `argos_triage_llm.py` · daemon tiempo real sobre alerts.json | ✅ |
+| Notificacion | Telegram bot ARGOS_SOC_Bot | ✅ |
+| Validacion | 25 iteraciones en 5 escenarios · validacion empirica con ataques reales | ✅ |
+| Errores documentados | Alucinaciones MITRE, confusion de playbooks, degradacion de prompt acumulado | ✅ |
+
 ---
 
 ## Estado y roadmap
@@ -242,7 +265,7 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | Suricata IDS/IPS · 27 reglas · 5 capas kill chain · 8 drops | ✅ Completado |
 | Playbooks SOAR en Python · 10 playbooks PB01-PB10 | ✅ Completado |
 | Notificaciones Telegram · canal ARGOS SOC Alerts | ✅ Completado |
-| Triaje con LLM local (Ollama) | 🔨 En desarrollo |
+| Triaje LLM local (Ollama + Mistral 7B) | ✅ Completado |
 | Dashboard de supervision humana | 🔨 En desarrollo |
 | Integracion PhishGuard | 🔨 En desarrollo |
 | Evaluacion cuantitativa (MTTD · MTTR · precision LLM) | 📅 Pendiente |
@@ -270,20 +293,24 @@ ARGOS/
 │       └── windows/            # 19 reglas YARA bloque Windows (YARA-06 a YARA-24)
 ├── soar/
 │   └── playbooks/              # 10 playbooks SOAR Python + servicios systemd
-│       ├── argos_pb01_integration.py         # Reverse Shell Linux
-│       ├── argos_pb01_windows_integration.py # Reverse Shell Windows
-│       ├── argos_pb02_integration.py         # Brute Force SSH
-│       ├── argos_pb03_integration.py         # Brute Force RDP
-│       ├── argos_pb04_integration.py         # Exfiltracion Linux
-│       ├── argos_pb04_windows_integration.py # Exfiltracion Windows
-│       ├── argos_pb05_integration.py         # Movimiento lateral
-│       ├── argos_pb06_integration.py         # Desactivacion herramientas
-│       ├── argos_pb07_integration.py         # Persistencia
-│       ├── argos_pb08_integration.py         # Credential Dumping / LSASS
-│       ├── argos_pb09_integration.py         # LOLBAS / Defense Evasion
-│       ├── argos_pb10_integration.py         # Beaconing / C2 red
-│       └── argos-pb0*.service                # Servicios systemd
-├── llm/                        # Pipeline triaje LLM Ollama (en desarrollo)
+│       ├── argos_pb01_integration.py
+│       ├── argos_pb01_windows_integration.py
+│       ├── argos_pb02_integration.py
+│       ├── argos_pb03_integration.py
+│       ├── argos_pb04_integration.py
+│       ├── argos_pb04_windows_integration.py
+│       ├── argos_pb05_integration.py
+│       ├── argos_pb06_integration.py
+│       ├── argos_pb07_integration.py
+│       ├── argos_pb08_integration.py
+│       ├── argos_pb09_integration.py
+│       ├── argos_pb10_integration.py
+│       └── argos-pb0*.service
+├── llm/
+│   ├── argos_triage_llm.py     # Daemon triaje tiempo real · Wazuh → Ollama → Telegram
+│   ├── argos_chat.py           # Herramienta desarrollo prompt interactivo
+│   ├── argos_test_llm.py       # Test basico de inferencia
+│   └── argos-ollama-tunnel.service  # Servicio systemd SSH tunnel
 ├── dashboard/                  # Dashboard de supervision humana (en desarrollo)
 ├── docs/
 │   └── architecture/           # Diagramas de arquitectura
@@ -302,7 +329,7 @@ ARGOS/
 - YARA 4.5.5
 - Suricata 6.0.4+
 - pywinrm (para playbooks Windows)
-- Ollama con Mistral 7B o LLaMA 3 8B *(en desarrollo)*
+- Ollama con Mistral 7B (host con acceso SSH desde el servidor Wazuh)
 
 ---
 
