@@ -1,0 +1,16 @@
+[Unit]
+Description=ARGOS SOC - Triage LLM Ollama Integration
+After=network.target wazuh-manager.service argos-ollama-tunnel.service
+Wants=argos-ollama-tunnel.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/environment
+ExecStart=/usr/bin/python3 /home/argos/argos_triage_llm.py
+Restart=always
+RestartSec=10
+StandardOutput=null
+StandardError=append:/var/ossec/logs/argos_triage_llm.log
+v
+[Install]
+WantedBy=multi-user.target

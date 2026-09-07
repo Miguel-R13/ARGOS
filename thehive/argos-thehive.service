@@ -1,0 +1,17 @@
+[Unit]
+Description=ARGOS SOC - TheHive Integration
+After=network.target wazuh-manager.service argos-triage-llm.service
+Wants=argos-triage-llm.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/environment
+ExecStart=/usr/bin/python3 /home/argos/argos_thehive_integration.py
+Restart=always
+RestartSec=10
+StandardOutput=null
+StandardError=append:/var/ossec/logs/argos_thehive_integration.log
+
+
+[Install]
+WantedBy=multi-user.target

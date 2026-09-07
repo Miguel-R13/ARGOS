@@ -3,6 +3,7 @@
 ARGOS Triage LLM - argos_triage_llm.py
 Lee alertas de Wazuh en tiempo real y realiza triaje automatico con Mistral 7B via Ollama.
 Envia el resultado al bot de Telegram del SOC.
+Escribe el triaje en cache JSON para integracion con TheHive.
 """
 
 import json
@@ -21,6 +22,8 @@ OLLAMA_TIMEOUT = 180
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "-5399235712")
 MIN_LEVEL = 10  # Solo alertas de nivel 10 o superior
+
+TRIAGE_CACHE_FILE = "/var/ossec/logs/argos_triage_cache.json"
 
 # IDs de reglas propias de ARGOS
 ARGOS_RULE_IDS = set([str(i) for i in range(100001, 103025)] +
@@ -190,6 +193,32 @@ def triage_llm(alert_prompt):
         return f"[ERROR LLM] {e}"
 
 
+def save_triage_cache(alert_id, alert, triage):
+    try:
+        cache = {}
+        if os.path.exists(TRIAGE_CACHE_FILE):
+            with open(TRIAGE_CACHE_FILE, "r") as f:
+                cache = json.load(f)
+        cache[alert_id] = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "rule_id": alert.get("rule", {}).get("id", ""),
+            "rule_description": alert.get("rule", {}).get("description", ""),
+            "agent_name": alert.get("agent", {}).get("name", ""),
+            "agent_ip": alert.get("agent", {}).get("ip", ""),
+            "level": alert.get("rule", {}).get("level", 0),
+            "triage": triage
+        }
+        # Mantener solo las ultimas 500 entradas
+        if len(cache) > 500:
+            keys = sorted(cache.keys())
+            for k in keys[:-500]:
+                del cache[k]
+        with open(TRIAGE_CACHE_FILE, "w") as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[CACHE ERROR] {e}")
+
+
 def send_telegram(mensaje):
     if not TELEGRAM_TOKEN:
         print("[TELEGRAM] Token no configurado, saltando envio")
@@ -226,6 +255,7 @@ def monitor_alerts():
     print(f"[ARGOS TRIAGE] Iniciando monitoreo de {ALERTS_FILE}")
     print(f"[ARGOS TRIAGE] Nivel minimo: {MIN_LEVEL}")
     print(f"[ARGOS TRIAGE] Modelo: {OLLAMA_MODEL} via {OLLAMA_URL}")
+    print(f"[ARGOS TRIAGE] Cache: {TRIAGE_CACHE_FILE}")
     print(f"[ARGOS TRIAGE] Esperando alertas nuevas...\n")
 
     processed = set()
@@ -292,6 +322,9 @@ def monitor_alerts():
             triage = triage_llm(alert_prompt)
 
             print(f"\n[TRIAJE LLM]\n{triage}\n")
+
+            # Guardar triaje en cache para integracion con TheHive
+            save_triage_cache(alert_id, alert, triage)
 
             msg = format_telegram(alert, triage)
             send_telegram(msg)
