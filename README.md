@@ -19,70 +19,89 @@ La tesis central no es técnica, es operativa: **Claude Pro, la herramienta de I
 Cinco VMs sobre SOC LAN aislada (VMnet1 192.168.234.0/24) más el host físico Windows como nodo de inferencia LLM.
 
 ```
-   SSH tunnel ED25519          API REST HTTP :9000
-   .10:8888 → Win:11434        .10 → .50:9000
-        │                            │
-┌───────▼──────┐             ┌───────▼──────────┐
-│ Host Windows │             │  ARGOS-TheHive   │
-│ físico       │             │  192.168.234.50  │
-│              │             │                  │
-│ Ollama       │             │  TheHive 5.7.6   │
-│ Mistral 7B   │             │  Cassandra 4.1   │
-│ 127.0.0.1    │             │  Elastic 7.x     │
-└──────────────┘             └──────────────────┘
-        │                            │
-        └────────────┬───────────────┘
-                     │
-        ┌────────────▼───────────────┐
-        │     ARGOS · Wazuh Server  │
-        │     192.168.234.10        │
-        │                           │
-        │  Wazuh 4.9.2 + OpenSearch │
-        │  Reglas Sigma propias     │
-        │  Reglas XML propias       │
-        │  Reglas YARA propias      │
-        │  Suricata IDS/IPS         │
-        │  SOAR Playbooks (Python)  │
-        │  argos_triage_llm.py      │
-        │  argos_thehive_integ.py   │
-        └────────────┬──────────────┘
-                     │ Wazuh Agent (telemetría cifrada)
-          ┌──────────┼──────────┐
-          │          │          │
-┌─────────▼──┐ ┌─────▼──────┐ ┌▼────────────┐
-│  Linux     │ │  Windows   │ │    Kali     │
-│  .30       │ │  .20       │ │    .40      │
-│            │ │            │ │ (atacante)  │
-│ auditd     │ │ Sysmon v15 │ └─────────────┘
-│ auth.log   │ │ ScriptBlock│
-│ ufw.log    │ │ Sec. Log   │
-│ Wazuh Agt  │ │ Wazuh Agt  │
-└────────────┘ └────────────┘
+          ┌────────────────────────────────────────┐
+          │        ARGOS · Wazuh Server            │
+          │        192.168.234.10                  │
+          │                                        │
+          │  Wazuh 4.9.2 + OpenSearch Dashboards   │
+          │  Reglas Sigma propias (24)             │
+          │  Reglas XML propias (72)               │
+          │  Reglas YARA propias (24)              │
+          │  Suricata IDS/IPS (27 reglas)          │
+          │  SOAR Playbooks Python (10)            │
+          │  argos_triage_llm.py                   │
+          │  argos_thehive_integration.py          │
+          └──────┬──────────────────┬─────────────┘
+                 │                  │
+          SSH tunnel           API REST HTTP
+          (triaje LLM)         (gestión casos)
+                 │                  │
+    ┌────────────▼──┐    ┌──────────▼───────────┐
+    │  Host Windows │    │    ARGOS-TheHive      │
+    │  físico       │    │    192.168.234.50     │
+    │               │    │                      │
+    │  Ollama        │    │    TheHive 5.7.6     │
+    │  Mistral 7B   │    │    Cassandra 4.1      │
+    │  127.0.0.1    │    │    Elasticsearch 7.x  │
+    └───────────────┘    └──────────────────────┘
+
+          │ Wazuh Agent (telemetría cifrada)
+          │
+┌─────────┴──────────────────────────────┐
+│                                        │
+▼                    ▼                   ▼
+┌──────────────┐  ┌──────────────┐  ┌───────────┐
+│ Linux · .30  │  │ Windows · .20│  │ Kali · .40│
+│              │  │              │  │ (atacante)│
+│ auditd       │  │ Sysmon v15   │  └───────────┘
+│ auth.log     │  │ ScriptBlock  │
+│ ufw.log      │  │ Security Log │
+│ Wazuh Agent  │  │ Wazuh Agent  │
+└──────────────┘  └──────────────┘
 ```
 
 ### Flujo de alerta extremo a extremo
 
 ```
-Wazuh alerts.json
-       │
-       ▼
-argos_triage_llm.py          ← daemon systemd en .10
-  Mistral 7B via SSH tunnel
-  9 campos de triaje
-       │
-       ├──► Telegram SOC Bot        ← notificación inmediata al analista
-       │
-       └──► argos_triage_cache.json ← caché indexado por alert_id
-                   │
-                   ▼
-       argos_thehive_integration.py ← daemon systemd en .10
-         monitoriza alerts.json
-         nivel 13+ → caso automático
-         triaje LLM adjunto como nota
-                   │
-                   ▼
-           TheHive 5 · .50:9000
-           caso documentado + veredicto del analista
+Endpoint .20 (Windows) / .30 (Linux)
+  genera evento: proceso, red, fichero, autenticacion
+       | Wazuh Agent - telemetria cifrada
+       v
+Wazuh Manager - 192.168.234.10
+  decodifica + aplica reglas en cadena:
+  |-- Sigma/XML  -> deteccion por comportamiento
+  |-- YARA       -> FIM detecta artefacto -> Active Response -> escaneo
+  +-- Suricata   -> deteccion de red (IDS alert / IPS drop)
+       | alerta nivel X -> /var/ossec/logs/alerts/alerts.json
+       |
+       |-->> OpenSearch Dashboards  <- analista L1 visualiza en tiempo real
+       |
+       v (nivel 10+)
+argos_triage_llm.py              <- daemon systemd en .10
+  peticion via SSH tunnel -> Ollama/Mistral 7B - host Windows fisico
+  genera triaje estructurado - 9 campos
+       |
+       |-->> Telegram SOC Bot       <- notificacion inmediata al analista
+       |
+       +-->> argos_triage_cache.json <- cache indexado por alert_id
+                   |
+                   v (nivel 13+)
+argos_thehive_integration.py     <- daemon systemd en .10
+  crea caso automatico en TheHive - .50:9000
+  adjunta triaje LLM como nota estructurada
+       |
+       v
+TheHive 5 - 192.168.234.50
+  analista L1 revisa caso + triaje LLM
+  registra veredicto (TP / FP / Indeterminate)
+       |
+       v (si contencion requerida)
+SOAR Playbooks PB01-PB10        <- servicios systemd en .10
+  PB01-PB04: contencion activa  -> bloqueo ufw/netsh - kill proceso
+  PB05-PB10: escalado humano    -> notificacion L2 con contexto completo
+       |
+       v
+Endpoint .20 / .30              <- contencion ejecutada
 ```
 
 ---
@@ -92,20 +111,19 @@ argos_triage_llm.py          ← daemon systemd en .10
 | Capa | Tecnología |
 | --- | --- |
 | SIEM / XDR | **Wazuh 4.9.2** + OpenSearch Dashboards |
-| Detección por comportamiento | Reglas **Sigma propias** (.yml) compiladas a OpenSearch via `sigma-cli` |
-| Detección nativa | Reglas **XML Wazuh propias** creadas desde cero con validación empírica |
-| Detección por contenido | **Reglas YARA propias** · 24 reglas sobre la kill chain ESC01-ESC24 |
+| Detección por comportamiento | **24 reglas Sigma propias** (.yml) · ESC01-ESC24 · compiladas a OpenSearch via `sigma-cli` 3.0.3 |
+| Detección nativa XML | **72 reglas XML Wazuh propias** · 27 Linux + 45 Windows · validadas empíricamente |
+| Detección por contenido | **24 reglas YARA propias** · 5 Linux + 19 Windows · 25 reglas XML de integración (103000-103024) |
 | Telemetría Linux | **auditd** (syscalls), auth.log, ufw.log |
 | Telemetría Windows - procesos | **Sysmon v15** (SwiftOnSecurity config) |
 | Telemetría Windows - scripts | **ScriptBlock Logging** (Event ID 4104) |
 | Telemetría Windows - autenticación | **Security Event Log** (EID 4625, 4624, 4698, 5157...) |
-| Detección de red | **Suricata IDS/IPS** · 27 reglas · 5 capas kill chain |
-| SOAR | **Python** · 10 playbooks · contención activa + escalado humano · Telegram |
-| Triaje IA | **Ollama** · Mistral 7B · 100% local · SSH tunnel cifrado · validado empíricamente |
-| Gestión de incidentes | **TheHive 5.7.6** · Cassandra 4.1 · Elasticsearch 7.x · VM dedicada .50 |
+| Detección de red | **Suricata IDS/IPS** · 19 alert + 8 drop · 27 reglas · 21 reglas XML · 5 capas kill chain |
+| SOAR | **Python** · 10 playbooks · 13 servicios systemd · contención activa + escalado humano · Telegram |
+| Triaje IA | **Ollama** · Mistral 7B · 100% local · SSH tunnel · 25 iteraciones de prompt engineering documentadas |
+| Gestión de incidentes | **TheHive 5.7.6** · Cassandra 4.1 · Elasticsearch 7.x · VM dedicada .50 · casos automáticos nivel 13+ |
+| Taxonomía de referencia | **MITRE ATT&CK** · mapeado en los 24 escenarios ESC01-ESC24 |
 | Módulo de phishing | **PhishGuard** (en desarrollo) |
-| Framework de detección | **MITRE ATT&CK** |
-| Framework de respuesta | **NIST** IR lifecycle |
 
 ---
 
@@ -131,6 +149,16 @@ El resultado es un XDR donde cada alerta tiene un origen trazable: sabes exactam
 - **SOAR operativo.** 10 playbooks Python: 4 de contención activa (reverse shell, brute force SSH, brute force RDP, exfiltración) y 6 de escalado humano (movimiento lateral, desactivación de herramientas, persistencia, credential dumping, LOLBAS, beaconing C2).
 - **Triaje LLM local validado empíricamente.** Pipeline completo Wazuh alerts.json → Ollama/Mistral 7B via SSH tunnel cifrado → caché JSON → Telegram SOC. 25 iteraciones de prompt engineering documentadas en 5 escenarios. 100% local, sin datos enviados a APIs externas.
 - **Gestión de incidentes con TheHive.** Creación automática de casos para alertas nivel 13+, con el triaje LLM adjunto como nota estructurada. Cierra el loop del analista: detectar, triar, documentar y decidir en un flujo único y trazable.
+
+---
+
+## Pilar filosófico
+
+**ARGOS rebate la tesis de que el analista L1 va a desaparecer por la IA.**
+
+El Capítulo 14 de la memoria del proyecto demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas, cobertura YARA insuficiente, arquitectura de detección de red incompleta, playbooks mal diseñados, y alucinaciones técnicas en el triaje LLM que habrían contaminado el registro permanente de incidentes.
+
+La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente lo que ARGOS documenta.
 
 ---
 
@@ -349,9 +377,9 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 | Notificaciones Telegram · canal ARGOS SOC Alerts | ✅ Completado |
 | Triaje LLM local (Ollama + Mistral 7B) | ✅ Completado |
 | Integración TheHive 5 · gestión de incidentes | ✅ Completado |
-| Dashboard de supervisión humana | 🔨 En desarrollo |
+| Dashboard de supervisión humana | ✅ Completado |
+| Evaluación cuantitativa (MTTD · MTTR · precisión LLM) | ✅ Completado |
 | Integración PhishGuard | 🔨 En desarrollo |
-| Evaluación cuantitativa (MTTD · MTTR · precisión LLM) | 📅 Pendiente |
 | Release público completo | 📅 Q4 2026 |
 
 ---
@@ -363,10 +391,10 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 | ARGOS-Wazuh | 192.168.234.10 | Ubuntu 22.04 | 8 GB | Wazuh 4.9.2 + OpenSearch + SOAR + LLM daemons |
 | ARGOS-Windows | 192.168.234.20 | Windows 10 Pro | 4 GB | Endpoint Windows + Ollama/Mistral 7B |
 | ARGOS-Linux | 192.168.234.30 | Ubuntu 22.04 | 2 GB | Endpoint Linux |
-| ARGOS-Kali | 192.168.234.40 | Kali Linux | - | Atacante |
+| ARGOS-Kali | 192.168.234.40 | Kali Linux | 1 GB | Atacante |
 | ARGOS-TheHive | 192.168.234.50 | Ubuntu 22.04 | 8 GB | TheHive 5.7.6 + Cassandra 4.1 + Elasticsearch 7.x |
 
-Red SOC LAN: 192.168.234.0/24 VMnet1 Host-only. Host: laptop i7 32 GB, VMware 17.6.4 + Docker.
+Red SOC LAN: 192.168.234.0/24 VMnet1 Host-only. Host: laptop i7 32 GB, VMware Workstation 17.6.4.
 
 ---
 
@@ -412,7 +440,7 @@ ARGOS/
 │   ├── argos_thehive_integration.py # Monitoriza alerts.json · crea casos nivel 13+ con triaje LLM adjunto
 │   ├── argos-thehive.service        # Servicio systemd integración TheHive
 │   └── argos-triage-llm.service     # Servicio systemd daemon triaje LLM
-├── dashboard/                       # Dashboard supervisión humana (en desarrollo)
+├── dashboard/                       # Dashboard supervisión humana OpenSearch
 ├── docs/
 │   └── architecture/                # Diagramas de arquitectura
 └── README.md
