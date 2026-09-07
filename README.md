@@ -1,81 +1,22 @@
 # ARGOS · AI-Augmented SOC Detection & Response Platform
 
-> *"30+ correcciones documentadas donde la IA dejó gaps que un analista L1 tuvo que cerrar."*
-
-XDR open source con supervisión humana del modelo, construido desde cero sobre Wazuh.
-
-No es un Wazuh instalado con las reglas por defecto. Es un sistema donde cada regla de detección nació de un ataque real ejecutado en laboratorio, cada gap en repositorios de referencia fue identificado por mí (Miguel Reguero, Blue Team Analyst) y cubierto con detección original propia, y cada corrección técnica sobre las propuestas de la IA está documentada con criterio profesional SOC.
+> *XDR open source con IA local, construido desde cero sobre Wazuh. Cada regla nació de un ataque real ejecutado en laboratorio. Cada decisión de la IA fue supervisada, corregida y documentada.*
 
 ---
 
-## Las correcciones que la IA no hizo sola
+## Qué es ARGOS
 
-Este es el núcleo de ARGOS. No un XDR bonito. Una demostración empírica de dónde falla la IA cuando diseña detección de seguridad sin supervisión profesional.
+ARGOS (Augmented Response and Guidance Operations System) es un XDR de laboratorio construido como Trabajo Fin de Máster en Ciberseguridad (IMMUNE x Universidad Nebrija x Banco Santander) y como diferenciador técnico para roles SOC Analyst / Blue Team L1.
 
-**La IA es la herramienta más potente que he usado en ciberseguridad. Y la que más supervisión necesita.**
+No es un Wazuh instalado con las reglas por defecto. Es un sistema de seis capas donde cada componente fue diseñado, implementado, atacado empíricamente y corregido por un analista con criterio SOC propio.
 
-Si construyes un sistema de detección con Claude Pro sin un analista encima corrigiéndola constantemente, el resultado parece completo pero deja pasar los ataques reales. ARGOS lo demuestra empíricamente con más de 30 correcciones documentadas en el Capítulo 14 de la memoria del proyecto.
-
-**El patrón que se repite en cada capa: la IA siempre propone el mínimo visible, nunca el mínimo necesario.**
-
-La diferencia entre esos dos números es la superficie de ataque que el adversario puede explotar sin ser detectado. ARGOS lo cuantifica capa por capa:
-
-- **YARA: 4 reglas propuestas vs. 24 implementadas.** La IA propuso cubrir 4 artefactos. El análisis sistemático de la kill chain completa determinó 24 escenarios con artefacto en disco, cada uno con su regla propia. Con 4 reglas, el 83% de los vectores de contenido malicioso habrían quedado sin cobertura: ninguna detección de LOLBAS, ninguna detección de ofuscación PowerShell, ninguna detección de credential dumping en disco.
-
-- **Suricata C2 y beaconing: 3 vectores propuestos vs. 10 implementados.** La IA propuso reverse shell TCP, HTTP beaconing y DNS tunneling. El analista identificó 7 vectores adicionales documentados en campañas activas: ICMP tunneling, IRC (botnets), SMB como canal C2 (APT29, Lazarus), JA3/JA3S fingerprinting TLS, beaconing periódico, long connection y low-and-slow. Con 3 vectores, el 70% de los canales C2 reales documentados en threat intelligence de 2024-2025 habrían pasado sin detección.
-
-- **Suricata movimiento lateral: 3 vectores propuestos vs. 6 implementados.** La IA propuso SSH lateral, RDP brute force y SMB anómalo. El analista añadió WMI/RPC (técnica principal de APTs en entornos Windows sin antivirus), Pass-the-Hash vía inspección de payload NTLMSSP, y port scan interno desde endpoint comprometido. Sin estos tres, un atacante que ya está dentro usando técnicas de living-off-the-land habría completado el movimiento lateral sin una sola alerta de red.
-
-- **Suricata IPS: 2 drops propuestos vs. 8 implementados.** La IA propuso bloqueo activo solo para FTP y SMB exterior. El analista identificó 6 vectores adicionales con certeza suficiente para drop inmediato: reverse shell TCP confirmada hacia zona atacantes, HTTP en SOC LAN donde no debería existir, DNS tunneling, ICMP tunneling y Pass-the-Hash. Con 2 drops, un reverse shell activo, un canal C2 HTTP y un ataque de DNS tunneling habrían seguido funcionando mientras el analista procesaba las alertas.
-
-- **Mimikatz: 1 regla propuesta vs. 3 implementadas con respuestas de incidente distintas.** La IA propuso una sola regla genérica. El analista identificó tres artefactos con respuestas radicalmente distintas: el script con comandos (intercepción posible antes de ejecutar), el log con credenciales volcadas (daño ocurrido, contención inmediata) y el minidump de LSASS (compromiso total: cambio de todas las credenciales del dominio sin excepción, incluyendo cuentas de servicio y administrador). Una regla genérica habría enviado al analista L1 la misma alerta para los tres casos, sin indicar que en uno de ellos el dominio entero está comprometido.
-
-- **SOAR: 5 playbooks propuestos vs. 10 implementados, y arquitectura completamente rediseñada.** La IA propuso organizar los playbooks por regla de detección (un playbook por sensor) y usar un único script centralizado para los playbooks de escalado humano. El analista estableció que la arquitectura correcta es un playbook por escenario operativo (el analista L1 no distingue si la reverse shell la detectó Suricata, YARA o auditd: lo relevante es el escenario y la acción requerida) y scripts separados por plataforma (Linux vs. Windows) y por playbook (granularidad operativa, ciclos de vida independientes). Además la IA propuso Active Response de Wazuh como mecanismo de ejecución, y durante la implementación empírica se descubrió que no dispara correctamente para alertas de log_format:audit en Wazuh 4.9.2, requiriendo rediseño hacia el patrón de integration script que usan las integraciones oficiales de Wazuh.
-
-- **Triaje LLM: prompt engineering documentado con 25 iteraciones en 5 escenarios.** El pipeline LLM de ARGOS (Ollama + Mistral 7B local via SSH tunnel) requirió 25 iteraciones de corrección del prompt para alcanzar un triaje de calidad comparable a un analista L1 con experiencia media. Los fallos documentados incluyen: alucinaciones de IDs MITRE inexistentes (T1023, T1033.001), confusión sistemática entre playbooks de escalado humano (PB05 vs PB07), recomendación de terminar el proceso mimikatz.exe (acción peligrosa que el guardrail explícito tuvo que prohibir), reproducción de instrucciones internas del system prompt en el output, y degradación del rendimiento del modelo por acumulación de instrucciones contradictorias que requirió reescritura completa del prompt. La validación empírica con ataques reales del laboratorio confirmó que las alucinaciones de IDs MITRE ocurren también en producción: el mismo escenario LSASS procesado dos veces consecutivas produjo T1003.001 correcto en la primera alerta y T1033.001 inexistente en la segunda.
-
-- **TheHive: arquitectura de caso propuesta por la IA descartada por criterio SOC.** La IA propuso dos decisiones de implementación que el analista rechazó por razones de seguridad operativa: exponer Ollama en 0.0.0.0:8888 para la integración y usar el usuario administrador por defecto para las llamadas API. El analista estableció que la exposición de 0.0.0.0 en un entorno SOC viola el principio de mínimo privilegio y crea un vector de ataque inaceptable, y que el usuario de servicio correcto es una cuenta tipo Service sin privilegios de administración. Ambas correcciones están documentadas en el Capítulo 14 de la memoria del proyecto.
-
-**El analista L1 no va a desaparecer. Va a dejar de mirar logs para convertirse en quien valida, interroga y corrige a la IA. ARGOS documenta exactamente eso.**
-
----
-
-## Pilar filosófico
-
-**ARGOS rebate la tesis de que el analista L1 va a desaparecer por la IA.**
-
-El Capítulo 14 de la memoria del proyecto demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas, cobertura YARA insuficiente, arquitectura de detección de red incompleta, arquitectura SOAR mal diseñada, alucinaciones técnicas en el triaje LLM que contaminarían el registro del incidente, y decisiones de arquitectura TheHive que habrían creado vectores de ataque en el propio sistema de gestión de incidentes.
-
-La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente lo que ARGOS documenta.
-
----
-
-## Lo que diferencia a ARGOS
-
-- **Detección original, no copiada.** Cada regla de detección nace de un ataque real ejecutado en laboratorio. Los repositorios de referencia (SigmaHQ para comportamiento, Neo23x0/ANY.RUN/ReversingLabs para contenido YARA, ET Open para red) se usan para identificar gaps, no para copiar lo que ya existe.
-- **Ningún campo se asume.** El ataque se simula primero, se analiza la telemetría, y solo entonces se escribe la regla. Nunca al revés.
-- **Human-in-the-loop documentado.** El analista no solo supervisa alertas: supervisa la lógica de detección, identifica sus gaps y aprueba las acciones de respuesta. El Capítulo 14 registra cada corrección técnica donde el criterio profesional superó a la herramienta.
-- **Kill chain completa, no escenarios aislados.** 24 escenarios Sigma/XML en dos bloques: Linux (ESC01-ESC10) y Windows (ESC11-ESC24). 21 escenarios Suricata cubriendo las 5 capas de la kill chain de red. 10 playbooks SOAR cubriendo la kill chain completa de respuesta.
-- **Evidencia de cada paso.** Cada escenario tiene capturas del ataque, la telemetría, el alerts.log y el dashboard. Nada sin validar.
-- **Detección multicapa.** Comportamiento (Sigma/XML), contenido (YARA), red (Suricata IDS/IPS) y triaje IA (Ollama) como capas complementarias e independientes.
-- **IDS + IPS.** Suricata opera en modo activo: 19 reglas alert para visibilidad y 8 reglas drop para bloqueo selectivo de vectores con certeza absoluta.
-- **SOAR operativo.** 10 playbooks Python cubriendo la kill chain completa: 4 de contención activa (reverse shell, brute force SSH, brute force RDP, exfiltración) y 6 de escalado humano (movimiento lateral, desactivación de herramientas, persistencia, credential dumping, LOLBAS, beaconing C2).
-- **Triaje LLM local validado empíricamente.** Pipeline completo Wazuh alerts.json → Ollama/Mistral 7B via SSH tunnel cifrado → caché JSON → Telegram SOC. 25 iteraciones de prompt engineering documentadas en 5 escenarios. Validado con ataques reales del laboratorio. 100% local, sin datos enviados a APIs externas.
-- **Gestión de incidentes con TheHive.** Creación automática de casos en TheHive 5 para alertas nivel 13+, con el triaje LLM adjunto como nota estructurada. Cierra el loop del analista: detectar, triar, documentar y decidir en un flujo único y trazable.
-
----
-
-## El problema que resuelve
-
-Los SOC modernos se ahogan en alertas. El modelo clásico de L1 revisando cientos de eventos al día ya no escala. Pero el problema no es solo el volumen: es que la mayoría de entornos Wazuh se despliegan con las reglas por defecto, sin validar si realmente detectan lo que dicen detectar.
-
-ARGOS parte de una premisa diferente: **ninguna regla de detección es válida hasta que un ataque real la dispara en laboratorio**.
-
-El resultado es un XDR open source donde cada alerta tiene un origen trazable: sabes exactamente por qué dispara, qué ataque la genera, qué dijo la IA sobre esa alerta, y qué decisión tomó el analista cuando la IA no llegaba sola.
+La tesis central: **la IA es la herramienta más potente disponible para un analista de seguridad, y la que más supervisión necesita.** ARGOS lo demuestra con más de 30 correcciones documentadas donde el criterio profesional cerró gaps que la IA no fue capaz de identificar sola.
 
 ---
 
 ## Arquitectura
+
+Seis capas operativas sobre una red SOC LAN aislada:
 
 ```
                 ┌──────────────────────────────────┐
@@ -108,7 +49,7 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
           │                │                │
 ┌─────────▼──────┐ ┌──────▼───────┐ ┌─────▼────────┐
 │ Endpoint Linux │ │ Endpoint Win │ │    Kali      │
-│ 192.168.234.30 │ │ 192.168.234.20│ │ 192.168.234.40│
+│ 192.168.234.30 │ │192.168.234.20│ │192.168.234.40│
 │                │ │              │ │  (atacante)  │
 │ auditd         │ │ Sysmon v15   │ └──────────────┘
 │ auth.log       │ │ ScriptBlock  │
@@ -127,12 +68,12 @@ argos_triage_llm.py          ← daemon systemd en .10
   Mistral 7B via SSH tunnel
   9 campos de triaje
        │
-       ├──► Telegram SOC Bot  ← notificación inmediata al analista
+       ├──► Telegram SOC Bot        ← notificación inmediata al analista
        │
-       └──► argos_triage_cache.json   ← caché indexado por alert_id
+       └──► argos_triage_cache.json ← caché indexado por alert_id
                    │
                    ▼
-       argos_thehive_integration.py   ← daemon systemd en .10
+       argos_thehive_integration.py ← daemon systemd en .10
          monitoriza alerts.json
          nivel 13+ → caso automático
          triaje LLM adjunto como nota
@@ -163,6 +104,59 @@ argos_triage_llm.py          ← daemon systemd en .10
 | Módulo de phishing | **PhishGuard** (en desarrollo) |
 | Framework de detección | **MITRE ATT&CK** |
 | Framework de respuesta | **NIST** IR lifecycle |
+
+---
+
+## El problema que resuelve
+
+Los SOC modernos se ahogan en alertas. El modelo clásico de L1 revisando cientos de eventos al día ya no escala. Pero el problema no es solo el volumen: es que la mayoría de entornos Wazuh se despliegan con las reglas por defecto, sin validar si realmente detectan lo que dicen detectar.
+
+ARGOS parte de una premisa diferente: **ninguna regla de detección es válida hasta que un ataque real la dispara en laboratorio.**
+
+El resultado es un XDR donde cada alerta tiene un origen trazable: sabes exactamente por qué dispara, qué ataque la genera, qué dijo la IA sobre esa alerta, y qué decisión tomó el analista cuando la IA no llegaba sola.
+
+---
+
+## Lo que diferencia a ARGOS
+
+- **Detección original, no copiada.** Cada regla nace de un ataque real ejecutado en laboratorio. Los repositorios de referencia (SigmaHQ, Neo23x0/ANY.RUN/ReversingLabs, ET Open) se usan para identificar gaps, no para copiar lo que ya existe.
+- **Ningún campo se asume.** El ataque se simula primero, se analiza la telemetría, y solo entonces se escribe la regla. Nunca al revés.
+- **Human-in-the-loop documentado.** El analista no solo supervisa alertas: supervisa la lógica de detección, identifica sus gaps y aprueba las acciones de respuesta. El Capítulo 14 registra cada corrección técnica donde el criterio profesional superó a la herramienta.
+- **Kill chain completa, no escenarios aislados.** 24 escenarios Sigma/XML (Linux ESC01-ESC10 + Windows ESC11-ESC24). 21 escenarios Suricata cubriendo las 5 capas de la kill chain de red. 10 playbooks SOAR cubriendo la kill chain completa de respuesta.
+- **Evidencia de cada paso.** Cada escenario tiene capturas del ataque, la telemetría, el alerts.log y el dashboard. Nada sin validar.
+- **Detección multicapa.** Comportamiento (Sigma/XML), contenido (YARA), red (Suricata IDS/IPS) y triaje IA (Ollama) como capas complementarias e independientes.
+- **IDS + IPS.** Suricata opera en modo activo: 19 reglas alert para visibilidad y 8 reglas drop para bloqueo selectivo de vectores con certeza absoluta.
+- **SOAR operativo.** 10 playbooks Python: 4 de contención activa (reverse shell, brute force SSH, brute force RDP, exfiltración) y 6 de escalado humano (movimiento lateral, desactivación de herramientas, persistencia, credential dumping, LOLBAS, beaconing C2).
+- **Triaje LLM local validado empíricamente.** Pipeline completo Wazuh alerts.json → Ollama/Mistral 7B via SSH tunnel cifrado → caché JSON → Telegram SOC. 25 iteraciones de prompt engineering documentadas en 5 escenarios. 100% local, sin datos enviados a APIs externas.
+- **Gestión de incidentes con TheHive.** Creación automática de casos para alertas nivel 13+, con el triaje LLM adjunto como nota estructurada. Cierra el loop del analista: detectar, triar, documentar y decidir en un flujo único y trazable.
+
+---
+
+## Las correcciones que la IA no hizo sola
+
+Este es el núcleo argumentativo de ARGOS. No un XDR bonito. Una demostración empírica de dónde falla la IA cuando diseña detección de seguridad sin supervisión profesional.
+
+**El patrón que se repite en cada capa: la IA siempre propone el mínimo visible, nunca el mínimo necesario.**
+
+La diferencia entre esos dos números es la superficie de ataque que el adversario puede explotar sin ser detectado. ARGOS lo cuantifica capa por capa:
+
+- **YARA: 4 reglas propuestas vs. 24 implementadas.** La IA propuso cubrir 4 artefactos. El análisis sistemático de la kill chain completa determinó 24 escenarios con artefacto en disco, cada uno con su regla propia. Con 4 reglas, el 83% de los vectores de contenido malicioso habrían quedado sin cobertura: ninguna detección de LOLBAS, ninguna detección de ofuscación PowerShell, ninguna detección de credential dumping en disco.
+
+- **Suricata C2 y beaconing: 3 vectores propuestos vs. 10 implementados.** La IA propuso reverse shell TCP, HTTP beaconing y DNS tunneling. El analista identificó 7 vectores adicionales documentados en campañas activas: ICMP tunneling, IRC (botnets), SMB como canal C2 (APT29, Lazarus), JA3/JA3S fingerprinting TLS, beaconing periódico, long connection y low-and-slow. Con 3 vectores, el 70% de los canales C2 reales documentados en threat intelligence de 2024-2025 habrían pasado sin detección.
+
+- **Suricata movimiento lateral: 3 vectores propuestos vs. 6 implementados.** La IA propuso SSH lateral, RDP brute force y SMB anómalo. El analista añadió WMI/RPC (técnica principal de APTs en entornos Windows sin antivirus), Pass-the-Hash vía inspección de payload NTLMSSP, y port scan interno desde endpoint comprometido. Sin estos tres, un atacante usando living-off-the-land habría completado el movimiento lateral sin una sola alerta de red.
+
+- **Suricata IPS: 2 drops propuestos vs. 8 implementados.** La IA propuso bloqueo activo solo para FTP y SMB exterior. El analista identificó 6 vectores adicionales con certeza suficiente para drop inmediato: reverse shell TCP confirmada hacia zona atacantes, HTTP en SOC LAN donde no debería existir, DNS tunneling, ICMP tunneling y Pass-the-Hash. Con 2 drops, un reverse shell activo y un canal C2 HTTP habrían seguido funcionando mientras el analista procesaba las alertas.
+
+- **Mimikatz: 1 regla propuesta vs. 3 implementadas con respuestas de incidente distintas.** La IA propuso una sola regla genérica. El analista identificó tres artefactos con respuestas radicalmente distintas: el script con comandos (intercepción posible antes de ejecutar), el log con credenciales volcadas (daño ocurrido, contención inmediata) y el minidump de LSASS (compromiso total: cambio de todas las credenciales del dominio sin excepción, incluyendo cuentas de servicio y administrador). Una regla genérica habría enviado al analista L1 la misma alerta para los tres casos, sin indicar que en uno de ellos el dominio entero está comprometido.
+
+- **SOAR: 5 playbooks propuestos vs. 10 implementados, y arquitectura completamente rediseñada.** La IA propuso organizar los playbooks por regla de detección (un playbook por sensor) y un único script centralizado para los playbooks de escalado humano. El analista estableció que la arquitectura correcta es un playbook por escenario operativo (el analista L1 no distingue si la reverse shell la detectó Suricata, YARA o auditd: lo relevante es el escenario y la acción requerida) y scripts separados por plataforma y por playbook. Además, la IA propuso Active Response de Wazuh como mecanismo de ejecución, y durante la implementación empírica se descubrió que no dispara correctamente para alertas de log_format:audit en Wazuh 4.9.2, requiriendo rediseño hacia el patrón de integration script.
+
+- **Triaje LLM: 25 iteraciones de corrección en 5 escenarios.** El pipeline LLM requirió 25 iteraciones para alcanzar un triaje comparable a un analista L1 con experiencia media. Los fallos documentados incluyen: alucinaciones de IDs MITRE inexistentes (T1023, T1033.001), confusión sistemática entre playbooks de escalado humano (PB05 vs PB07), recomendación de terminar el proceso mimikatz.exe (acción peligrosa que el guardrail explícito tuvo que prohibir), y degradación del rendimiento por acumulación de instrucciones contradictorias. La validación empírica confirmó que las alucinaciones ocurren también en producción: el mismo escenario LSASS procesado dos veces consecutivas produjo T1003.001 correcto en la primera alerta y T1033.001 inexistente en la segunda.
+
+- **TheHive: dos decisiones de arquitectura propuestas por la IA rechazadas por criterio SOC.** La IA propuso exponer Ollama en 0.0.0.0:8888 para la integración y usar el usuario administrador por defecto para las llamadas API. El analista rechazó ambas: la exposición de 0.0.0.0 viola el principio de mínimo privilegio y crea un vector de ataque inaceptable en un entorno SOC; el usuario de servicio correcto es una cuenta tipo Service sin privilegios de administración. Ambas correcciones están documentadas en el Capítulo 14.
+
+**El analista L1 no va a desaparecer. Va a dejar de mirar logs para convertirse en quien valida, interroga y corrige a la IA. ARGOS documenta exactamente eso.**
 
 ---
 
@@ -305,7 +299,7 @@ argos_triage_llm.py          ← daemon systemd en .10
 | Wazuh 4.9.2 + OpenSearch + agentes | ✅ Implementado |
 | Sysmon v15 (SwiftOnSecurity) en endpoint Windows | ✅ Implementado |
 | ScriptBlock Logging en endpoint Windows | ✅ Implementado |
-| Reglas Sigma propias · 28 reglas (10 Linux + 18 Windows) | ✅ Implementado |
+| Reglas Sigma propias · 28 reglas (10 Linux + 18 Windows) | ✅ Completado |
 | Reglas XML Wazuh propias · bloque Linux ESC01-ESC10 | ✅ Completado |
 | Reglas XML Wazuh propias · bloque Windows ESC11-ESC24 | ✅ Completado |
 | Pipeline YARA · FIM + Active Response + decoder + reglas XML | ✅ Implementado |
