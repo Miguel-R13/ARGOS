@@ -6,56 +6,58 @@
 
 ## Qué es ARGOS
 
-ARGOS (Augmented Response and Guidance Operations System) es un XDR de laboratorio construido como Trabajo Fin de Máster en Ciberseguridad (IMMUNE x Universidad Nebrija x Banco Santander) y como diferenciador técnico para roles SOC Analyst / Blue Team L1.
+ARGOS (Augmented Response and Guidance Operations System) es un XDR construido desde cero sobre Wazuh como TFM del Máster en Ciberseguridad (IMMUNE x Universidad Nebrija x Banco Santander) y como diferenciador técnico para roles SOC Analyst / Blue Team.
 
-No es un Wazuh instalado con las reglas por defecto. Es un sistema de seis capas donde cada componente fue diseñado, implementado, atacado empíricamente y corregido por un analista con criterio SOC propio.
+Seis capas de detección y respuesta: comportamiento (Sigma/XML), contenido (YARA), red (Suricata IDS/IPS), respuesta automatizada (SOAR Python), triaje con LLM local (Ollama + Mistral 7B) y gestión de incidentes (TheHive 5). Cada regla nació de un ataque real ejecutado en laboratorio. Nada se asumió, todo se validó empíricamente.
 
-La tesis central: **la IA es la herramienta más potente disponible para un analista de seguridad, y la que más supervisión necesita.** ARGOS lo demuestra con 91 correcciones documentadas donde el criterio profesional cerró gaps que la IA no fue capaz de identificar sola.
+La tesis central no es técnica, es operativa: **Claude Pro, la herramienta de IA más avanzada disponible, dejó gaps críticos de cobertura en cada bloque del sistema cuando no había un analista encima corrigiéndola.** 91 correcciones documentadas en el Capítulo 14 de la memoria del proyecto demuestran exactamente dónde falla la IA y por qué el analista L1 no va a desaparecer: va a supervisar a la IA.
 
 ---
 
 ## Arquitectura
 
-Seis capas operativas sobre una red SOC LAN aislada:
+Cinco VMs sobre SOC LAN aislada (VMnet1 192.168.234.0/24) más el host físico Windows como nodo de inferencia LLM.
 
 ```
-                ┌──────────────────────────────────┐
-                │      ARGOS · Wazuh Server        │
-                │      192.168.234.10              │
-                │                                  │
-                │  OpenSearch + Dashboards         │
-                │  Reglas Sigma propias            │
-                │  Reglas XML propias              │
-                │  Reglas YARA propias             │
-                │  Suricata IDS/IPS                │
-                │  SOAR Playbooks (Python)         │
-                │  Triaje LLM daemon               │
-                │  Integración TheHive daemon      │
-                └──────────┬───────────────────────┘
-                           │
-              ┌────────────┴────────────┐
-              │ SSH tunnel cifrado      │ API REST
-              │ ED25519 key auth        │ HTTP :9000
-       ┌──────▼──────┐          ┌───────▼──────────┐
-       │ Host Windows│          │ ARGOS-TheHive     │
-       │ Ollama      │          │ 192.168.234.50    │
-       │ Mistral 7B  │          │                   │
-       │ 127.0.0.1   │          │ TheHive 5.7.6     │
-       └─────────────┘          │ Cassandra 4.1     │
-                                │ Elasticsearch 7.x │
-                                └───────────────────┘
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-┌─────────▼──────┐ ┌──────▼───────┐ ┌─────▼────────┐
-│ Endpoint Linux │ │ Endpoint Win │ │    Kali      │
-│ 192.168.234.30 │ │192.168.234.20│ │192.168.234.40│
-│                │ │              │ │  (atacante)  │
-│ auditd         │ │ Sysmon v15   │ └──────────────┘
-│ auth.log       │ │ ScriptBlock  │
-│ ufw.log        │ │ Security Log │
-│ Wazuh Agent    │ │ Wazuh Agent  │
-└────────────────┘ └──────────────┘
+   SSH tunnel ED25519          API REST HTTP :9000
+   .10:8888 → Win:11434        .10 → .50:9000
+        │                            │
+┌───────▼──────┐             ┌───────▼──────────┐
+│ Host Windows │             │  ARGOS-TheHive   │
+│ físico       │             │  192.168.234.50  │
+│              │             │                  │
+│ Ollama       │             │  TheHive 5.7.6   │
+│ Mistral 7B   │             │  Cassandra 4.1   │
+│ 127.0.0.1    │             │  Elastic 7.x     │
+└──────────────┘             └──────────────────┘
+        │                            │
+        └────────────┬───────────────┘
+                     │
+        ┌────────────▼───────────────┐
+        │     ARGOS · Wazuh Server  │
+        │     192.168.234.10        │
+        │                           │
+        │  Wazuh 4.9.2 + OpenSearch │
+        │  Reglas Sigma propias     │
+        │  Reglas XML propias       │
+        │  Reglas YARA propias      │
+        │  Suricata IDS/IPS         │
+        │  SOAR Playbooks (Python)  │
+        │  argos_triage_llm.py      │
+        │  argos_thehive_integ.py   │
+        └────────────┬──────────────┘
+                     │ Wazuh Agent (telemetría cifrada)
+          ┌──────────┼──────────┐
+          │          │          │
+┌─────────▼──┐ ┌─────▼──────┐ ┌▼────────────┐
+│  Linux     │ │  Windows   │ │    Kali     │
+│  .30       │ │  .20       │ │    .40      │
+│            │ │            │ │ (atacante)  │
+│ auditd     │ │ Sysmon v15 │ └─────────────┘
+│ auth.log   │ │ ScriptBlock│
+│ ufw.log    │ │ Sec. Log   │
+│ Wazuh Agt  │ │ Wazuh Agt  │
+└────────────┘ └────────────┘
 ```
 
 ### Flujo de alerta extremo a extremo
