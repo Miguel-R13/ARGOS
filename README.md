@@ -1,6 +1,6 @@
 # ARGOS · AI-Augmented SOC Detection & Response Platform
 
-> *XDR open source con IA local, construido desde cero sobre Wazuh. Cada regla nació de un ataque real ejecutado en laboratorio. Cada decisión de la IA fue supervisada, corregida y documentada.*
+> *XDR open source con IA local, construido desde cero sobre Wazuh. Cada regla nació de un ataque real ejecutado en laboratorio. Cada decisión de la IA fue supervisada, corregida y documentada: 91 correcciones · +20 escenarios de ataque sin cubrir identificados · TTPs de MITRE alucinados en producción · evidencia forense en riesgo por recomendación del LLM.*
 
 ---
 
