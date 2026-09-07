@@ -34,6 +34,8 @@ La diferencia entre esos dos números es la superficie de ataque que el adversar
 
 - **Triaje LLM: prompt engineering documentado con 25 iteraciones en 5 escenarios.** El pipeline LLM de ARGOS (Ollama + Mistral 7B local via SSH tunnel) requirió 25 iteraciones de corrección del prompt para alcanzar un triaje de calidad comparable a un analista L1 con experiencia media. Los fallos documentados incluyen: alucinaciones de IDs MITRE inexistentes (T1023, T1033.001), confusión sistemática entre playbooks de escalado humano (PB05 vs PB07), recomendación de terminar el proceso mimikatz.exe (acción peligrosa que el guardrail explícito tuvo que prohibir), reproducción de instrucciones internas del system prompt en el output, y degradación del rendimiento del modelo por acumulación de instrucciones contradictorias que requirió reescritura completa del prompt. La validación empírica con ataques reales del laboratorio confirmó que las alucinaciones de IDs MITRE ocurren también en producción: el mismo escenario LSASS procesado dos veces consecutivas produjo T1003.001 correcto en la primera alerta y T1033.001 inexistente en la segunda.
 
+- **TheHive: arquitectura de caso propuesta por la IA descartada por criterio SOC.** La IA propuso dos decisiones de implementación que el analista rechazó por razones de seguridad operativa: exponer Ollama en 0.0.0.0:8888 para la integración y usar el usuario administrador por defecto para las llamadas API. El analista estableció que la exposición de 0.0.0.0 en un entorno SOC viola el principio de mínimo privilegio y crea un vector de ataque inaceptable, y que el usuario de servicio correcto es una cuenta tipo Service sin privilegios de administración. Ambas correcciones están documentadas en el Capítulo 14 de la memoria del proyecto.
+
 **El analista L1 no va a desaparecer. Va a dejar de mirar logs para convertirse en quien valida, interroga y corrige a la IA. ARGOS documenta exactamente eso.**
 
 ---
@@ -42,7 +44,7 @@ La diferencia entre esos dos números es la superficie de ataque que el adversar
 
 **ARGOS rebate la tesis de que el analista L1 va a desaparecer por la IA.**
 
-El Capítulo 14 de la memoria del proyecto demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas, cobertura YARA insuficiente, arquitectura de detección de red incompleta, arquitectura SOAR mal diseñada, y alucinaciones técnicas en el triaje LLM que contaminarían el registro del incidente.
+El Capítulo 14 de la memoria del proyecto demuestra empíricamente que si ARGOS se hubiese construido solo con IA habría dejado múltiples gaps críticos de cobertura sin cubrir. En cada escenario identifiqué correcciones de criterio SOC que la IA no fue capaz de proponer por sí sola: umbrales incorrectos, vectores de ataque ignorados, telemetría mal clasificada, exclusiones necesarias no contempladas, cobertura YARA insuficiente, arquitectura de detección de red incompleta, arquitectura SOAR mal diseñada, alucinaciones técnicas en el triaje LLM que contaminarían el registro del incidente, y decisiones de arquitectura TheHive que habrían creado vectores de ataque en el propio sistema de gestión de incidentes.
 
 La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente lo que ARGOS documenta.
 
@@ -57,8 +59,9 @@ La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente 
 - **Evidencia de cada paso.** Cada escenario tiene capturas del ataque, la telemetría, el alerts.log y el dashboard. Nada sin validar.
 - **Detección multicapa.** Comportamiento (Sigma/XML), contenido (YARA), red (Suricata IDS/IPS) y triaje IA (Ollama) como capas complementarias e independientes.
 - **IDS + IPS.** Suricata opera en modo activo: 19 reglas alert para visibilidad y 8 reglas drop para bloqueo selectivo de vectores con certeza absoluta.
-- **SOAR operativo.** 10 playbooks Python cubriendo la kill chain completa: 4 de contencion activa (reverse shell, brute force SSH, brute force RDP, exfiltracion) y 6 de escalado humano (movimiento lateral, desactivacion de herramientas, persistencia, credential dumping, LOLBAS, beaconing C2).
-- **Triaje LLM local validado empiricamente.** Pipeline completo Wazuh alerts.json → Ollama/Mistral 7B via SSH tunnel cifrado → Telegram SOC. 25 iteraciones de prompt engineering documentadas en 5 escenarios. Validado con ataques reales del laboratorio. 100% local, sin datos enviados a APIs externas.
+- **SOAR operativo.** 10 playbooks Python cubriendo la kill chain completa: 4 de contención activa (reverse shell, brute force SSH, brute force RDP, exfiltración) y 6 de escalado humano (movimiento lateral, desactivación de herramientas, persistencia, credential dumping, LOLBAS, beaconing C2).
+- **Triaje LLM local validado empíricamente.** Pipeline completo Wazuh alerts.json → Ollama/Mistral 7B via SSH tunnel cifrado → caché JSON → Telegram SOC. 25 iteraciones de prompt engineering documentadas en 5 escenarios. Validado con ataques reales del laboratorio. 100% local, sin datos enviados a APIs externas.
+- **Gestión de incidentes con TheHive.** Creación automática de casos en TheHive 5 para alertas nivel 13+, con el triaje LLM adjunto como nota estructurada. Cierra el loop del analista: detectar, triar, documentar y decidir en un flujo único y trazable.
 
 ---
 
@@ -68,33 +71,38 @@ Los SOC modernos se ahogan en alertas. El modelo clásico de L1 revisando ciento
 
 ARGOS parte de una premisa diferente: **ninguna regla de detección es válida hasta que un ataque real la dispara en laboratorio**.
 
-El resultado es un XDR open source donde cada alerta tiene un origen trazable: sabes exactamente por qué dispara, qué ataque la genera y qué decisión tomó el analista cuando la IA no llegaba sola.
+El resultado es un XDR open source donde cada alerta tiene un origen trazable: sabes exactamente por qué dispara, qué ataque la genera, qué dijo la IA sobre esa alerta, y qué decisión tomó el analista cuando la IA no llegaba sola.
 
 ---
 
 ## Arquitectura
 
 ```
-                ┌─────────────────────────────┐
-                │     ARGOS · Wazuh Server    │
-                │     192.168.234.10          │
-                │                             │
-                │  OpenSearch + Dashboards    │
-                │  Reglas Sigma propias       │
-                │  Reglas XML propias         │
-                │  Reglas YARA propias        │
-                │  Suricata IDS/IPS           │
-                │  SOAR Playbooks (Python)    │
-                │  Ollama LLM tunnel          │
-                └──────────┬──────────────────┘
-                           │ SSH tunnel cifrado
-                           │ ED25519 key auth
-                    ┌──────▼──────┐
-                    │ Host Windows│
-                    │ Ollama      │
-                    │ Mistral 7B  │
-                    │ 127.0.0.1   │
-                    └─────────────┘
+                ┌──────────────────────────────────┐
+                │      ARGOS · Wazuh Server        │
+                │      192.168.234.10              │
+                │                                  │
+                │  OpenSearch + Dashboards         │
+                │  Reglas Sigma propias            │
+                │  Reglas XML propias              │
+                │  Reglas YARA propias             │
+                │  Suricata IDS/IPS                │
+                │  SOAR Playbooks (Python)         │
+                │  Triaje LLM daemon               │
+                │  Integración TheHive daemon      │
+                └──────────┬───────────────────────┘
+                           │
+              ┌────────────┴────────────┐
+              │ SSH tunnel cifrado      │ API REST
+              │ ED25519 key auth        │ HTTP :9000
+       ┌──────▼──────┐          ┌───────▼──────────┐
+       │ Host Windows│          │ ARGOS-TheHive     │
+       │ Ollama      │          │ 192.168.234.50    │
+       │ Mistral 7B  │          │                   │
+       │ 127.0.0.1   │          │ TheHive 5.7.6     │
+       └─────────────┘          │ Cassandra 4.1     │
+                                │ Elasticsearch 7.x │
+                                └───────────────────┘
                            │
           ┌────────────────┼────────────────┐
           │                │                │
@@ -109,30 +117,56 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 └────────────────┘ └──────────────┘
 ```
 
+### Flujo de alerta extremo a extremo
+
+```
+Wazuh alerts.json
+       │
+       ▼
+argos_triage_llm.py          ← daemon systemd en .10
+  Mistral 7B via SSH tunnel
+  9 campos de triaje
+       │
+       ├──► Telegram SOC Bot  ← notificación inmediata al analista
+       │
+       └──► argos_triage_cache.json   ← caché indexado por alert_id
+                   │
+                   ▼
+       argos_thehive_integration.py   ← daemon systemd en .10
+         monitoriza alerts.json
+         nivel 13+ → caso automático
+         triaje LLM adjunto como nota
+                   │
+                   ▼
+           TheHive 5 · .50:9000
+           caso documentado + veredicto del analista
+```
+
 ---
 
 ## Stack
 
-| Capa | Tecnologia |
+| Capa | Tecnología |
 | --- | --- |
 | SIEM / XDR | **Wazuh 4.9.2** + OpenSearch Dashboards |
-| Deteccion por comportamiento | Reglas **Sigma propias** (.yml) compiladas a OpenSearch via `sigma-cli` |
-| Deteccion nativa | Reglas **XML Wazuh propias** creadas desde cero con validacion empirica |
-| Deteccion por contenido | **Reglas YARA propias** · 24 reglas sobre la kill chain ESC01-ESC24 |
-| Telemetria Linux | **auditd** (syscalls), auth.log, ufw.log |
-| Telemetria Windows - procesos | **Sysmon v15** (SwiftOnSecurity config) |
-| Telemetria Windows - scripts | **ScriptBlock Logging** (Event ID 4104) |
-| Telemetria Windows - autenticacion | **Security Event Log** (EID 4625, 4624, 4698, 5157...) |
-| Deteccion de red | **Suricata IDS/IPS** · 27 reglas · 5 capas kill chain |
-| SOAR | **Python** · 10 playbooks · contencion activa + escalado humano · Telegram |
-| Triaje IA | **Ollama** · Mistral 7B · 100% local · SSH tunnel cifrado · validado empiricamente |
-| Modulo de phishing | **PhishGuard** (en desarrollo) |
-| Framework de deteccion | **MITRE ATT&CK** |
+| Detección por comportamiento | Reglas **Sigma propias** (.yml) compiladas a OpenSearch via `sigma-cli` |
+| Detección nativa | Reglas **XML Wazuh propias** creadas desde cero con validación empírica |
+| Detección por contenido | **Reglas YARA propias** · 24 reglas sobre la kill chain ESC01-ESC24 |
+| Telemetría Linux | **auditd** (syscalls), auth.log, ufw.log |
+| Telemetría Windows - procesos | **Sysmon v15** (SwiftOnSecurity config) |
+| Telemetría Windows - scripts | **ScriptBlock Logging** (Event ID 4104) |
+| Telemetría Windows - autenticación | **Security Event Log** (EID 4625, 4624, 4698, 5157...) |
+| Detección de red | **Suricata IDS/IPS** · 27 reglas · 5 capas kill chain |
+| SOAR | **Python** · 10 playbooks · contención activa + escalado humano · Telegram |
+| Triaje IA | **Ollama** · Mistral 7B · 100% local · SSH tunnel cifrado · validado empíricamente |
+| Gestión de incidentes | **TheHive 5.7.6** · Cassandra 4.1 · Elasticsearch 7.x · VM dedicada .50 |
+| Módulo de phishing | **PhishGuard** (en desarrollo) |
+| Framework de detección | **MITRE ATT&CK** |
 | Framework de respuesta | **NIST** IR lifecycle |
 
 ---
 
-## Inventario de deteccion
+## Inventario de detección
 
 ### Bloque Linux · Endpoint 192.168.234.30 · Kill chain completa
 
@@ -140,14 +174,14 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | --- | --- | --- | --- |
 | ESC01 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
 | ESC02 | Fuerza bruta SSH | T1110 · Brute Force | ✅ |
-| ESC03 | Enumeracion de usuarios | T1087.001 · Account Discovery | ✅ |
+| ESC03 | Enumeración de usuarios | T1087.001 · Account Discovery | ✅ |
 | ESC04 | Escalada de privilegios con sudo | T1548.003 · Sudo and Sudo Caching | ✅ |
 | ESC05 | Reverse shell bash | T1059.004 · Unix Shell | ✅ |
 | ESC06 | Cron job malicioso | T1053.003 · Scheduled Task: Cron | ✅ |
 | ESC07 | Movimiento lateral SSH | T1021.004 · Remote Services: SSH | ✅ |
 | ESC08 | Transferencia lateral SCP/SFTP | T1570 · Lateral Tool Transfer | ✅ |
-| ESC09 | Desactivacion de herramientas de seguridad | T1562.001 · Impair Defenses | ✅ |
-| ESC10 | Exfiltracion de datos via curl/wget | T1041 + T1105 | ✅ |
+| ESC09 | Desactivación de herramientas de seguridad | T1562.001 · Impair Defenses | ✅ |
+| ESC10 | Exfiltración de datos via curl/wget | T1041 + T1105 | ✅ |
 
 ### Bloque Windows · Endpoint 192.168.234.20 · Kill chain completa
 
@@ -155,14 +189,14 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | --- | --- | --- | --- |
 | ESC11 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
 | ESC12 | Fuerza bruta RDP | T1110 · Brute Force | ✅ |
-| ESC13 | Enumeracion de usuarios Windows | T1087.001 · Account Discovery | ✅ |
+| ESC13 | Enumeración de usuarios Windows | T1087.001 · Account Discovery | ✅ |
 | ESC14 | Escalada de privilegios UAC bypass fodhelper | T1548.002 · Bypass UAC | ✅ |
 | ESC15 | Reverse shell PowerShell | T1059.001 · PowerShell | ✅ |
 | ESC16 | Persistencia via tareas programadas | T1053.005 · Scheduled Task | ✅ |
 | ESC17 | Movimiento lateral SMB/psexec | T1021.002 · SMB/Windows Admin Shares | ✅ |
 | ESC18 | Transferencia lateral via SMB | T1570 · Lateral Tool Transfer | ✅ |
-| ESC19 | Desactivacion Defender/Wazuh/Sysmon | T1562.001 · Impair Defenses | ✅ |
-| ESC20 | Exfiltracion via certutil/PowerShell LOLBAS | T1041 + T1105 | ✅ |
+| ESC19 | Desactivación Defender/Wazuh/Sysmon | T1562.001 · Impair Defenses | ✅ |
+| ESC20 | Exfiltración via certutil/PowerShell LOLBAS | T1041 + T1105 | ✅ |
 | ESC21 | Credential dumping LSASS/SAM | T1003.001 + T1003.002 | ✅ |
 | ESC22 | Pass the Hash | T1550.002 · Pass the Hash | ✅ |
 | ESC23 | LOLBAS: regsvr32, mshta, certutil, bitsadmin, wmic | T1218 · System Binary Proxy Execution | ✅ |
@@ -180,7 +214,7 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | YARA-06 | PowerShell reverse shell TCPClient | ESC15 | Execution | T1059.001 | ✅ |
 | YARA-07 | Script PowerShell schtasks persistencia | ESC16 | Persistence | T1053.005 | ✅ |
 | YARA-08 | Herramienta ofensiva depositada via SMB | ESC17/ESC18 | Lateral Movement | T1570 | ✅ |
-| YARA-09 | Script desactivacion herramientas seguridad | ESC19 | Defense Evasion | T1562.001 | ✅ |
+| YARA-09 | Script desactivación herramientas seguridad | ESC19 | Defense Evasion | T1562.001 | ✅ |
 | YARA-10 | Archivo Base64 generado por certutil -encode | ESC20 | Exfiltration | T1041 | ✅ |
 | YARA-11 | Script PowerShell FromBase64String decoder | ESC20 | Defense Evasion | T1027 | ✅ |
 | YARA-12 | Script batch certutil -decode | ESC20 | Defense Evasion | T1027 | ✅ |
@@ -203,34 +237,34 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | --- | --- | --- | --- | --- | --- |
 | SURICATA-ESC01 | TCP SYN Port Scan nmap invariant win:1024 | Reconocimiento | T1046 | alert | ✅ |
 | SURICATA-ESC01b | Generic Scanner Threshold | Reconocimiento | T1046 | alert | ✅ |
-| SURICATA-ESC02 | SSH Brute Force banner no estandar | Acceso inicial | T1110.001 | alert+drop | ✅ |
+| SURICATA-ESC02 | SSH Brute Force banner no estándar | Acceso inicial | T1110.001 | alert+drop | ✅ |
 | SURICATA-ESC03 | Reverse Shell TCP hacia zona atacantes interna | C2 | T1059.004 | alert+drop | ✅ |
 | SURICATA-ESC03b | Reverse Shell TCP hacia IP externa | C2 | T1059.004 | alert | ✅ |
 | SURICATA-ESC04 | HTTP Beaconing en SOC LAN | C2 | T1071.001 | alert+drop | ✅ |
 | SURICATA-ESC05 | DNS Tunneling subdominio largo | C2 | T1071.004 | alert+drop | ✅ |
-| SURICATA-ESC06 | ICMP Tunneling payload anomalo | C2 | T1095 | alert+drop | ✅ |
+| SURICATA-ESC06 | ICMP Tunneling payload anómalo | C2 | T1095 | alert+drop | ✅ |
 | SURICATA-ESC07 | Long Connection TCP beaconing persistente | C2 | T1571 | alert | ✅ |
-| SURICATA-ESC08 | SSH hacia multiples destinos internos | Movimiento lateral | T1021.004 | alert | ✅ |
-| SURICATA-ESC09 | RDP hacia multiples destinos internos | Movimiento lateral | T1021.001 | alert | ✅ |
+| SURICATA-ESC08 | SSH hacia múltiples destinos internos | Movimiento lateral | T1021.004 | alert | ✅ |
+| SURICATA-ESC09 | RDP hacia múltiples destinos internos | Movimiento lateral | T1021.001 | alert | ✅ |
 | SURICATA-ESC09b | RDP Brute Force mismo destino | Movimiento lateral | T1110.001 | alert | ✅ |
-| SURICATA-ESC10 | SMB anomalo entre endpoints | Movimiento lateral | T1021.002 | alert | ✅ |
+| SURICATA-ESC10 | SMB anómalo entre endpoints | Movimiento lateral | T1021.002 | alert | ✅ |
 | SURICATA-ESC11 | WMI RPC puerto 135 | Movimiento lateral | T1047 | alert | ✅ |
 | SURICATA-ESC12 | Pass-the-Hash NTLMSSP SMB | Movimiento lateral | T1550.002 | alert+drop | ✅ |
 | SURICATA-ESC13 | Port scan interno desde endpoint comprometido | Movimiento lateral | T1046 | alert | ✅ |
-| SURICATA-ESC14 | Exfiltracion por volumen de datos TCP | Exfiltracion | T1048 | alert | ✅ |
-| SURICATA-ESC15 | FTP saliente, protocolo inseguro | Exfiltracion | T1048.003 | alert+drop | ✅ |
-| SURICATA-ESC16 | SMB hacia exterior | Exfiltracion | T1048 | alert+drop | ✅ |
+| SURICATA-ESC14 | Exfiltración por volumen de datos TCP | Exfiltración | T1048 | alert | ✅ |
+| SURICATA-ESC15 | FTP saliente, protocolo inseguro | Exfiltración | T1048.003 | alert+drop | ✅ |
+| SURICATA-ESC16 | SMB hacia exterior | Exfiltración | T1048 | alert+drop | ✅ |
 
 ### Bloque SOAR · Playbooks Python · Kill chain completa
 
 | # | Escenario | Sensores | Tipo | Estado |
 | --- | --- | --- | --- | --- |
-| PB01 | Reverse Shell / C2 | ESC05/ESC15 + YARA-01/06 + SURICATA-ESC03 | Contencion activa (ufw/netsh + kill) | ✅ |
-| PB02 | Brute Force SSH | ESC02 + SURICATA-ESC02 | Contencion activa (ufw) | ✅ |
-| PB03 | Brute Force RDP | ESC12 + SURICATA-ESC09b | Contencion activa (netsh) | ✅ |
-| PB04 | Exfiltracion de datos | ESC10/ESC20 + SURICATA-ESC14/15 | Contencion activa (kill + ufw/netsh) | ✅ |
+| PB01 | Reverse Shell / C2 | ESC05/ESC15 + YARA-01/06 + SURICATA-ESC03 | Contención activa (ufw/netsh + kill) | ✅ |
+| PB02 | Brute Force SSH | ESC02 + SURICATA-ESC02 | Contención activa (ufw) | ✅ |
+| PB03 | Brute Force RDP | ESC12 + SURICATA-ESC09b | Contención activa (netsh) | ✅ |
+| PB04 | Exfiltración de datos | ESC10/ESC20 + SURICATA-ESC14/15 | Contención activa (kill + ufw/netsh) | ✅ |
 | PB05 | Movimiento lateral | ESC07/08/17/18 + SURICATA-ESC08/09/10/11 | Escalado humano | ✅ |
-| PB06 | Desactivacion herramientas seguridad | ESC09/19 + YARA-09 | Escalado humano | ✅ |
+| PB06 | Desactivación herramientas seguridad | ESC09/19 + YARA-09 | Escalado humano | ✅ |
 | PB07 | Persistencia | ESC06/16 + YARA-02/07 | Escalado humano | ✅ |
 | PB08 | Credential Dumping / LSASS | ESC21/22 + YARA-13/14/15 | Escalado humano obligatorio | ✅ |
 | PB09 | LOLBAS / Defense Evasion | ESC23/24 + YARA-16 al 24 | Escalado humano | ✅ |
@@ -238,15 +272,29 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 
 ### Triaje LLM · Pipeline Ollama local
 
-| Componente | Detalle |
-| --- | --- |
+| Componente | Detalle | Estado |
+| --- | --- | --- |
 | Modelo | Mistral 7B (inferencia CPU, 100% local) | ✅ |
 | Canal | SSH tunnel ED25519 · .10:8888 → Windows:11434 | ✅ |
 | Seguridad | OLLAMA_HOST=127.0.0.1, firewall Windows bloqueando puerto 11434, OpenSSH hardened | ✅ |
-| Script | `argos_triage_llm.py` · daemon tiempo real sobre alerts.json | ✅ |
-| Notificacion | Telegram bot ARGOS_SOC_Bot | ✅ |
-| Validacion | 25 iteraciones en 5 escenarios · validacion empirica con ataques reales | ✅ |
-| Errores documentados | Alucinaciones MITRE, confusion de playbooks, degradacion de prompt acumulado | ✅ |
+| Script | `llm/argos_triage_llm.py` · daemon tiempo real sobre alerts.json | ✅ |
+| Caché | `argos_triage_cache.json` · indexado por alert_id · puente con TheHive | ✅ |
+| Notificación | Telegram bot ARGOS_SOC_Bot | ✅ |
+| Validación | 25 iteraciones en 5 escenarios · validación empírica con ataques reales | ✅ |
+| Errores documentados | Alucinaciones MITRE, confusión de playbooks, degradación de prompt acumulado | ✅ |
+
+### Integración TheHive · Gestión de incidentes
+
+| Componente | Detalle | Estado |
+| --- | --- | --- |
+| Instancia | TheHive 5.7.6 · all-in-one single node · VM dedicada | ✅ |
+| Backend | Cassandra 4.1 + Elasticsearch 7.x | ✅ |
+| Acceso | http://192.168.234.50:9000 · SOC LAN VMnet1 | ✅ |
+| Script | `thehive/argos_thehive_integration.py` · monitoriza alerts.json | ✅ |
+| Umbral | Casos automáticos para alertas nivel 13+ · manuales para nivel 10-12 | ✅ |
+| Triaje adjunto | 9 campos Mistral 7B como nota estructurada en cada caso | ✅ |
+| Usuario servicio | argos-bot@argos.local · tipo Service · perfil analyst · sin privilegios admin | ✅ |
+| Servicios systemd | `argos-triage-llm` + `argos-thehive` · activos en .10 | ✅ |
 
 ---
 
@@ -266,10 +314,25 @@ El resultado es un XDR open source donde cada alerta tiene un origen trazable: s
 | Playbooks SOAR en Python · 10 playbooks PB01-PB10 | ✅ Completado |
 | Notificaciones Telegram · canal ARGOS SOC Alerts | ✅ Completado |
 | Triaje LLM local (Ollama + Mistral 7B) | ✅ Completado |
-| Dashboard de supervision humana | 🔨 En desarrollo |
-| Integracion PhishGuard | 🔨 En desarrollo |
-| Evaluacion cuantitativa (MTTD · MTTR · precision LLM) | 📅 Pendiente |
-| Release publico completo | 📅 Q4 2026 |
+| Integración TheHive 5 · gestión de incidentes | ✅ Completado |
+| Dashboard de supervisión humana | 🔨 En desarrollo |
+| Integración PhishGuard | 🔨 En desarrollo |
+| Evaluación cuantitativa (MTTD · MTTR · precisión LLM) | 📅 Pendiente |
+| Release público completo | 📅 Q4 2026 |
+
+---
+
+## Infraestructura del laboratorio
+
+| VM | IP | SO | RAM | Rol |
+| --- | --- | --- | --- | --- |
+| ARGOS-Wazuh | 192.168.234.10 | Ubuntu 22.04 | 8 GB | Wazuh 4.9.2 + OpenSearch + SOAR + LLM daemons |
+| ARGOS-Windows | 192.168.234.20 | Windows 10 Pro | 4 GB | Endpoint Windows + Ollama/Mistral 7B |
+| ARGOS-Linux | 192.168.234.30 | Ubuntu 22.04 | 2 GB | Endpoint Linux |
+| ARGOS-Kali | 192.168.234.40 | Kali Linux | - | Atacante |
+| ARGOS-TheHive | 192.168.234.50 | Ubuntu 22.04 | 8 GB | TheHive 5.7.6 + Cassandra 4.1 + Elasticsearch 7.x |
+
+Red SOC LAN: 192.168.234.0/24 VMnet1 Host-only. Host: laptop i7 32 GB, VMware 17.6.4 + Docker.
 
 ---
 
@@ -307,13 +370,17 @@ ARGOS/
 │       ├── argos_pb10_integration.py
 │       └── argos-pb0*.service
 ├── llm/
-│   ├── argos_triage_llm.py     # Daemon triaje tiempo real · Wazuh → Ollama → Telegram
-│   ├── argos_chat.py           # Herramienta desarrollo prompt interactivo
-│   ├── argos_test_llm.py       # Test basico de inferencia
+│   ├── argos_triage_llm.py          # Daemon triaje tiempo real · alerts.json → Ollama → caché + Telegram
+│   ├── argos_chat.py                # Herramienta desarrollo prompt interactivo
+│   ├── argos_test_llm.py            # Test básico de inferencia
 │   └── argos-ollama-tunnel.service  # Servicio systemd SSH tunnel
-├── dashboard/                  # Dashboard de supervision humana (en desarrollo)
+├── thehive/
+│   ├── argos_thehive_integration.py # Monitoriza alerts.json · crea casos nivel 13+ con triaje LLM adjunto
+│   ├── argos-thehive.service        # Servicio systemd integración TheHive
+│   └── argos-triage-llm.service     # Servicio systemd daemon triaje LLM
+├── dashboard/                       # Dashboard supervisión humana (en desarrollo)
 ├── docs/
-│   └── architecture/           # Diagramas de arquitectura
+│   └── architecture/                # Diagramas de arquitectura
 └── README.md
 ```
 
@@ -323,13 +390,14 @@ ARGOS/
 
 - Wazuh Server 4.9.2 + agente Linux o Windows
 - OpenSearch + OpenSearch Dashboards
-- Sysmon v15+ con configuracion SwiftOnSecurity (endpoints Windows)
+- Sysmon v15+ con configuración SwiftOnSecurity (endpoints Windows)
 - Python 3.11+
 - sigma-cli 3.0.3
 - YARA 4.5.5
 - Suricata 6.0.4+
 - pywinrm (para playbooks Windows)
 - Ollama con Mistral 7B (host con acceso SSH desde el servidor Wazuh)
+- TheHive 5.7.6 + Cassandra 4.1 + Elasticsearch 7.x (VM dedicada recomendada, 8 GB RAM)
 
 ---
 
