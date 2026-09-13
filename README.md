@@ -1,6 +1,6 @@
 # ARGOS · AI-Augmented SOC Detection & Response Platform
 
-> *XDR open source con IA local, construido desde cero sobre Wazuh. Cada regla nació de un ataque real ejecutado en laboratorio. Cada decisión de la IA fue supervisada, corregida y documentada: 91 correcciones · +20 escenarios de ataque sin cubrir identificados · TTPs de MITRE alucinados en producción · evidencia forense en riesgo por recomendación del LLM.*
+> *XDR open source con IA local, construido desde cero sobre Wazuh. Cada regla nació de un ataque real ejecutado en laboratorio. Cada decisión de la IA fue supervisada, corregida y documentada: **58 correcciones a Claude Sonnet 4.6 · 25 iteraciones de prompt engineering sobre Mistral 7B · +20 escenarios de ataque sin cubrir identificados · TTPs de MITRE alucinados en producción · evidencia forense en riesgo por recomendación del LLM.***
 
 ---
 
@@ -10,13 +10,43 @@ ARGOS (Augmented Response and Guidance Operations System) es un XDR construido d
 
 Seis capas de detección y respuesta: comportamiento (Sigma/XML), contenido (YARA), red (Suricata IDS/IPS), respuesta automatizada (SOAR Python), triaje con LLM local (Ollama + Mistral 7B) y gestión de incidentes (TheHive 5). Cada regla nació de un ataque real ejecutado en laboratorio. Nada se asumió, todo se validó empíricamente.
 
-La tesis central no es técnica, es operativa: **Claude Pro, la herramienta de IA más avanzada disponible, dejó gaps críticos de cobertura en cada bloque del sistema cuando no había un analista encima corrigiéndola.** 91 correcciones documentadas en el Capítulo 14 de la memoria del proyecto demuestran exactamente dónde falla la IA y por qué el analista L1 no va a desaparecer: va a supervisar a la IA.
+La tesis central no es técnica, es operativa: **Claude Sonnet 4.6, la herramienta de IA más avanzada disponible, dejó gaps críticos de cobertura en cada bloque del sistema cuando no había un analista encima corrigiéndola.** 58 correcciones documentadas en el Capítulo 14 de la memoria del proyecto demuestran exactamente dónde falla la IA y por qué el analista L1 no va a desaparecer: va a supervisar a la IA.
 
 ---
 
-## Arquitectura
+## Métricas empíricas · Validación 4-5 septiembre 2026
 
-Cinco VMs sobre SOC LAN aislada (VMnet1 192.168.234.0/24) más el host físico Windows como nodo de inferencia LLM.
+| Métrica | Valor | Contexto |
+|---|---|---|
+| **MTTD** | 3 a 20 segundos | Frente a 3-20 minutos de respuesta manual L1 |
+| **MTTR automático** | < 3 segundos | Escenarios con contención activa PB01-PB04 |
+| **MTTD ESC05 Reverse Shell** | 8,5 segundos | Detección nula con Wazuh nativo sin ARGOS |
+| **MTTD ESC21 LSASS/Mimikatz** | 3 segundos | Detección nula con Wazuh nativo sin ARGOS |
+| **Tiempo triaje manual L1** | 3-15 minutos | Identificar evento + mapear MITRE + extraer IOCs + decidir |
+| **Tiempo triaje Mistral 7B** | 30-90 segundos | 9 campos estructurados: MITRE, IOCs, kill chain, acción L1 |
+| **Mejora en tiempo de triaje** | 2x a 27x | Adicional a la mejora 60x-400x en contención |
+| **Alertas sesión de validación** | 5.286 totales | 473 accionables nivel 12+ en bloque ARGOS (8,9% del total) |
+| **Precisión bloque ARGOS** | 76,3% criticidad alta | Vs 67,5% de las reglas nativas Wazuh |
+| **Falsos positivos estructurales** | 0 | Durante sesión de validación tras tuning documentado en Cap13 |
+| **Tasa alucinaciones MITRE** | 24% | 6 errores en 25 iteraciones de prompt engineering + 1 en producción |
+| **Coste de licencias** | 0 € | Stack 100% open source. Equivalente comercial: 50.000-200.000 €/año |
+
+---
+
+## Wazuh nativo vs ARGOS · Comparativa baseline
+
+| Escenario | Wazuh nativo | Nivel | ARGOS MTTD | Nivel ARGOS | Diferencia |
+|---|---|---|---|---|---|
+| ESC02 Brute Force SSH | Reglas 5712/5763: umbral 8 intentos, ventana 60s | 10 | 7 s | 12 | Umbral 5 sin ventana, escalado PB02 |
+| ESC05 Reverse Shell | **Sin detección** (auditd sin syscall connect) | N/D | 8,5 s | 13 | **De invisible a detectado en segundos** |
+| ESC07 Movimiento lateral SSH | Regla 5715: auth exitosa, invisible al filtro L1 | 3 | 20 s | 10 | De nivel 3 ignorado a escalado PB05 + MITRE |
+| ESC21 LSASS/Mimikatz | **Sin detección** (sin Sysmon ni reglas LSASS) | N/D | 3 s | 15 | **De invisible a detectado en 3 segundos** |
+
+---
+
+## Arquitectura · 5 capas
+
+![Arquitectura ARGOS 5 capas](docs/architecture/argos_arquitectura_5_capas.png)
 
 ```
           ┌────────────────────────────────────────┐
@@ -25,9 +55,9 @@ Cinco VMs sobre SOC LAN aislada (VMnet1 192.168.234.0/24) más el host físico W
           │                                        │
           │  Wazuh 4.9.2 + OpenSearch Dashboards   │
           │  Reglas Sigma propias (24)             │
-          │  Reglas XML propias (72)               │
+          │  Reglas XML propias (115)              │
           │  Reglas YARA propias (24)              │
-          │  Suricata IDS/IPS (27 reglas)          │
+          │  Suricata IDS/IPS (25 reglas)          │
           │  SOAR Playbooks Python (10)            │
           │  argos_triage_llm.py                   │
           │  argos_thehive_integration.py          │
@@ -106,24 +136,57 @@ Endpoint .20 / .30              <- contencion ejecutada
 
 ---
 
+## Inventario de detección · 178 artefactos
+
+### Resumen por capa
+
+| Capa | Tecnología | Artefactos | Cobertura |
+|---|---|---|---|
+| Comportamiento endpoint | Sigma + XML Wazuh | 24 reglas Sigma + 115 reglas XML = **139 artefactos** | ESC01-ESC24 · Linux + Windows · Nivel 8-15 |
+| Contenido en disco | YARA + Active Response | **24 reglas YARA** | 5 Linux + 19 Windows · artefactos maliciosos |
+| Red | Suricata IDS/IPS | **25 reglas** (17 IDS alert + 8 IPS drop) | 5 capas kill chain · tráfico este-oeste |
+| Respuesta automática | SOAR Python | **10 playbooks** (4 contención + 6 escalado) | Kill chain completa · MTTR < 3 s |
+| Triaje IA | Ollama + Mistral 7B | 9 campos estructurados | Tiempo real · 100% local |
+| Gestión incidentes | TheHive 5.7.6 | Casos automáticos nivel 13+ | Feedback loop analista |
+
+**Total: 178 artefactos de detección y respuesta. Ninguno procedente de repositorio externo sin revisión.**
+
+### Cobertura MITRE ATT&CK · 33 técnicas en 10 tácticas
+
+![Cobertura MITRE ATT&CK ARGOS](docs/architecture/argos_mitre_cobertura.png)
+
+> [Ver heatmap interactivo](docs/argos_mitre_heatmap.html)
+
+| Estadística | Valor |
+|---|---|
+| Técnicas MITRE únicas cubiertas | **33** |
+| Tácticas de la kill chain | **10** (Reconocimiento → Exfiltración) |
+| Técnicas con triple cobertura XML+YARA+Suricata | **1** (T1059.004 Reverse Shell bash) |
+| Técnicas con doble cobertura | **13** |
+| Técnicas con cobertura única | **19** |
+
+La cobertura sigue la **Pirámide del Dolor de David Bianco**: las reglas detectan comportamientos de proceso invariantes (syscall connect, acceso a LSASS, exfiltración por volumen), no herramientas específicas. Un atacante puede cambiar de herramienta; no puede cambiar el comportamiento que la técnica requiere.
+
+---
+
 ## Stack
 
 | Capa | Tecnología |
-| --- | --- |
+|---|---|
 | SIEM / XDR | **Wazuh 4.9.2** + OpenSearch Dashboards |
 | Detección por comportamiento | **24 reglas Sigma propias** (.yml) · ESC01-ESC24 · compiladas a OpenSearch via `sigma-cli` 3.0.3 |
-| Detección nativa XML | **72 reglas XML Wazuh propias** · 27 Linux + 45 Windows · validadas empíricamente |
-| Detección por contenido | **24 reglas YARA propias** · 5 Linux + 19 Windows · 25 reglas XML de integración (103000-103024) |
-| Telemetría Linux | **auditd** (syscalls), auth.log, ufw.log |
+| Detección nativa XML | **115 reglas XML Wazuh propias** · 25 Linux + 47 Windows + 25 reglas XML de integración YARA (103000-103024) + 21 reglas XML Suricata (110001-110021) · validadas empíricamente |
+| Detección por contenido | **24 reglas YARA propias** · 5 Linux + 19 Windows |
+| Telemetría Linux | **auditd** (syscalls), auth.log, ufw.log, syslog, journald, ossec-logcollector |
 | Telemetría Windows - procesos | **Sysmon v15** (SwiftOnSecurity config) |
 | Telemetría Windows - scripts | **ScriptBlock Logging** (Event ID 4104) |
 | Telemetría Windows - autenticación | **Security Event Log** (EID 4625, 4624, 4698, 5157...) |
-| Detección de red | **Suricata IDS/IPS** · 19 alert + 8 drop · 27 reglas · 21 reglas XML · 5 capas kill chain |
+| Detección de red | **Suricata IDS/IPS** · 17 alert + 8 drop · 25 reglas · 5 capas kill chain |
 | SOAR | **Python** · 10 playbooks · 13 servicios systemd · contención activa + escalado humano · Telegram |
 | Triaje IA | **Ollama** · Mistral 7B · 100% local · SSH tunnel · 25 iteraciones de prompt engineering documentadas |
 | Gestión de incidentes | **TheHive 5.7.6** · Cassandra 4.1 · Elasticsearch 7.x · VM dedicada .50 · casos automáticos nivel 13+ |
-| Taxonomía de referencia | **MITRE ATT&CK** · mapeado en los 24 escenarios ESC01-ESC24 |
-| Módulo de phishing | **PhishGuard** (en desarrollo) |
+| Taxonomía de referencia | **MITRE ATT&CK v15** · 33 técnicas · 10 tácticas · mapeado en los 24 escenarios ESC01-ESC24 |
+| Módulo de phishing | **PhishGuard 1.0.0** · standalone · 39 indicadores · 152 tests · CLEAN/SUSPICIOUS/MALICIOUS |
 
 ---
 
@@ -142,13 +205,28 @@ El resultado es un XDR donde cada alerta tiene un origen trazable: sabes exactam
 - **Detección original, no copiada.** Cada regla nace de un ataque real ejecutado en laboratorio. Los repositorios de referencia (SigmaHQ, Neo23x0/ANY.RUN/ReversingLabs, ET Open) se usan para identificar gaps, no para copiar lo que ya existe.
 - **Ningún campo se asume.** El ataque se simula primero, se analiza la telemetría, y solo entonces se escribe la regla. Nunca al revés.
 - **Human-in-the-loop documentado.** El analista no solo supervisa alertas: supervisa la lógica de detección, identifica sus gaps y aprueba las acciones de respuesta. El Capítulo 14 registra cada corrección técnica donde el criterio profesional superó a la herramienta.
-- **Kill chain completa, no escenarios aislados.** 24 escenarios Sigma/XML (Linux ESC01-ESC10 + Windows ESC11-ESC24). 21 escenarios Suricata cubriendo las 5 capas de la kill chain de red. 10 playbooks SOAR cubriendo la kill chain completa de respuesta.
+- **Kill chain completa, no escenarios aislados.** 24 escenarios Sigma/XML (Linux ESC01-ESC10 + Windows ESC11-ESC24). 25 reglas Suricata cubriendo las 5 capas de la kill chain de red. 10 playbooks SOAR cubriendo la kill chain completa de respuesta.
 - **Evidencia de cada paso.** Cada escenario tiene capturas del ataque, la telemetría, el alerts.log y el dashboard. Nada sin validar.
 - **Detección multicapa.** Comportamiento (Sigma/XML), contenido (YARA), red (Suricata IDS/IPS) y triaje IA (Ollama) como capas complementarias e independientes.
-- **IDS + IPS.** Suricata opera en modo activo: 19 reglas alert para visibilidad y 8 reglas drop para bloqueo selectivo de vectores con certeza absoluta.
+- **IDS + IPS.** Suricata opera en modo activo: 17 reglas alert para visibilidad y 8 reglas drop para bloqueo selectivo de vectores con certeza absoluta.
 - **SOAR operativo.** 10 playbooks Python: 4 de contención activa (reverse shell, brute force SSH, brute force RDP, exfiltración) y 6 de escalado humano (movimiento lateral, desactivación de herramientas, persistencia, credential dumping, LOLBAS, beaconing C2).
 - **Triaje LLM local validado empíricamente.** Pipeline completo Wazuh alerts.json → Ollama/Mistral 7B via SSH tunnel cifrado → caché JSON → Telegram SOC. 25 iteraciones de prompt engineering documentadas en 5 escenarios. 100% local, sin datos enviados a APIs externas.
 - **Gestión de incidentes con TheHive.** Creación automática de casos para alertas nivel 13+, con el triaje LLM adjunto como nota estructurada. Cierra el loop del analista: detectar, triar, documentar y decidir en un flujo único y trazable.
+- **Coste de licencias: 0 €.** Stack 100% open source. Equivalente comercial (Splunk SOAR + licencias): 50.000-200.000 €/año.
+- **Reproducibilidad total.** Cada regla, script y configuración está versionado en este repositorio. Cualquier evaluador puede desplegar el sistema desde cero y verificar los resultados documentados en la memoria del TFM.
+
+---
+
+## Hardening aplicado por capa
+
+| Componente | Medidas aplicadas |
+|---|---|
+| **Ollama / LLM** | `OLLAMA_HOST=127.0.0.1` · acceso exclusivo via tunnel SSH ED25519 · firewall Windows bloqueando puerto 11434 · sin exposición en red |
+| **SSH tunnel** | Clave ED25519 sin passphrase (decisión consciente de laboratorio documentada en Cap15) · `PermitRootLogin no` · `PasswordAuthentication no` |
+| **Wazuh + OpenSearch** | TLS entre componentes · credenciales de administrador configuradas en despliegue inicial · acceso limitado a SOC LAN 192.168.234.0/24 |
+| **TheHive** | Usuario de servicio `argos-bot@argos.local` tipo Service sin acceso web · API key en `/etc/environment` nunca en código · adaptador NAT retirado tras instalación |
+| **Tokens y credenciales** | ARGOS_TOKEN Telegram, THEHIVE_API_KEY y THEHIVE_URL en `/etc/environment` · nunca hardcodeados en scripts · repositorio publica solo plantilla con valores de ejemplo |
+| **Red SOC LAN** | VMnet1 Host-only aislada · sin salida a internet desde VMs de detección · TheHive sin adaptador NAT en producción |
 
 ---
 
@@ -164,14 +242,20 @@ La IA procesa. El analista decide. Y la diferencia entre los dos es exactamente 
 
 ## Las correcciones que la IA no hizo sola
 
-Este es el núcleo argumentativo de ARGOS. No un XDR bonito. Una demostración empírica de dónde falla la IA cuando diseña detección de seguridad sin supervisión profesional. **91 correcciones documentadas en el Capítulo 14**, organizadas por bloque del sistema.
+> [Ver tabla interactiva completa de correcciones](docs/argos_corrections_ia.html)
+
+Este es el núcleo argumentativo de ARGOS. No un XDR bonito. Una demostración empírica de dónde falla la IA cuando diseña detección de seguridad sin supervisión profesional.
+
+**58 correcciones a Claude Sonnet 4.6 documentadas en el Capítulo 14**, organizadas por bloque del sistema. **25 iteraciones de prompt engineering sobre Mistral 7B** para el componente de triaje. Naturaleza completamente distinta: las correcciones a Sonnet afectan a la arquitectura de seguridad del sistema; las correcciones a Mistral refinan la calidad del output de triaje.
+
+> [Ver comparativa de modelos de IA evaluados para ARGOS](docs/argos_model_comparison.html)
 
 **El patrón que se repite en cada capa: la IA propone lo que suena razonable. El analista identifica lo que falla en producción.**
 
 ### Gaps cuantitativos: lo que la IA propuso vs. lo que el analista implementó
 
 | Bloque | IA propuso | Analista implementó | Gap sin cubrir |
-| --- | --- | --- | --- |
+|---|---|---|---|
 | Reglas YARA | 4 reglas | 24 reglas | 83% de vectores de contenido malicioso sin cobertura |
 | Vectores C2 y beaconing Suricata | 3 vectores | 10 vectores | 70% de canales C2 documentados en TI 2024-2025 sin detección |
 | Vectores movimiento lateral Suricata | 3 vectores | 6 vectores | WMI/RPC, Pass-the-Hash y port scan interno sin alerta de red |
@@ -184,10 +268,6 @@ Este es el núcleo argumentativo de ARGOS. No un XDR bonito. Una demostración e
 
 ### Los fallos que habrían causado daño real
 
-Más allá de los números, hay un conjunto de decisiones de la IA que, de haberse implementado sin corrección, habrían causado daño operativo directo. Estos son los más graves, ordenados por impacto.
-
----
-
 **1. El LLM recomendó terminar mimikatz.exe en un playbook de escalado humano obligatorio.**
 
 PB08 (Credential Dumping / LSASS) es escalado humano obligatorio por definición: cuando mimikatz ha volcado LSASS, el dominio entero está comprometido y L2 necesita el sistema intacto para análisis forense. El LLM aplicó el patrón de contención automática aprendido de PB01-PB04 y recomendó al L1 verificar que el proceso mimikatz.exe había sido terminado. Si un L1 hubiera ejecutado esa instrucción, habría destruido evidencia forense crítica antes de que L2 llegara al caso, eliminando cualquier posibilidad de reconstruir el alcance del compromiso. La corrección requirió un guardrail explícito con prohibición absoluta: `NUNCA digas que el SOAR actuó en PB08, NUNCA digas que el proceso fue terminado`. El fallo no era ambiguo ni sutil. El modelo lo repitió incluso tras la primera corrección, requiriendo una segunda iteración con lenguaje más restrictivo.
@@ -196,35 +276,58 @@ PB08 (Credential Dumping / LSASS) es escalado humano obligatorio por definición
 
 **2. La IA propuso exponer Ollama en 0.0.0.0:11434 con el firewall de Windows como única barrera.**
 
-La propuesta era técnicamente funcional: Ollama escuchando en todas las interfaces, acceso restringido por regla de firewall a la IP .10. El analista rechazó esta arquitectura por una razón de fondo: en un entorno SOC, el firewall de Windows es exactamente el tipo de control que un atacante con foothold en la red desactiva primero (T1562.001, el mismo escenario que ARGOS simula en ESC19). Si el firewall caía, Ollama quedaba accesible desde cualquier máquina de la SOC LAN, exponiendo el modelo que procesa alertas reales con contexto de incidentes activos a inyección de prompts o exfiltración de datos de investigación. Un informe de Oligo Security de 2024 documentó miles de instancias Ollama expuestas en internet sin autenticación siendo usadas para minería de criptomonedas. La corrección fue Ollama en 127.0.0.1 exclusivamente, con acceso únicamente via tunnel SSH con autenticación ED25519, sin excepciones.
+La propuesta era técnicamente funcional: Ollama escuchando en todas las interfaces, acceso restringido por regla de firewall a la IP .10. El analista rechazó esta arquitectura por una razón de fondo: en un entorno SOC, el firewall de Windows es exactamente el tipo de control que un atacante con foothold en la red desactiva primero (T1562.001, el mismo escenario que ARGOS simula en ESC19). Si el firewall caía, Ollama quedaba accesible desde cualquier máquina de la SOC LAN, exponiendo el modelo que procesa alertas reales con contexto de incidentes activos a inyección de prompts o exfiltración de datos de investigación. La corrección fue Ollama en 127.0.0.1 exclusivamente, con acceso únicamente via tunnel SSH con autenticación ED25519, sin excepciones.
 
 ---
 
 **3. La IA detectaba brute force SSH por blacklist de herramientas. El analista invirtió el problema.**
 
-La propuesta era una regla específica para el banner de Hydra (`SSH-2.0-libssh_0.x`) y otra para Medusa (`SSH-2.0-MEDUSA_1.0`). El analista rechazó el enfoque por razón estructural, no técnica: una blacklist es incompleta por definición. Cualquier herramienta nueva, cualquier script personalizado, cualquier atacante que modifique su banner evade la detección sin esfuerzo. El enfoque correcto invierte el problema: en lugar de definir qué es malicioso (conjunto abierto e ilimitado), definir qué es legítimo (conjunto cerrado y conocido). El analista capturó el tráfico SSH real de la SOC LAN con tcpdump, identificó que el único cliente legítimo es OpenSSH, y construyó una regla de whitelist que alerta sobre cualquier banner que no sea OpenSSH. Un atacante que use una herramienta de brute force que no exista todavía dispara la alerta. Con la blacklist de la IA, no.
+La propuesta era una regla específica para el banner de Hydra y otra para Medusa. El analista rechazó el enfoque por razón estructural: una blacklist es incompleta por definición. El analista capturó el tráfico SSH real de la SOC LAN con tcpdump, identificó que el único cliente legítimo es OpenSSH, y construyó una regla de whitelist que alerta sobre cualquier banner que no sea OpenSSH. Un atacante que use una herramienta que no exista todavía dispara la alerta. Con la blacklist de la IA, no.
 
 ---
 
 **4. El LLM alucinó un ID MITRE inexistente en producción, con una alerta real de LSASS.**
 
-Durante la validación empírica con ataques reales del laboratorio, el pipeline procesó dos alertas consecutivas de la misma regla (102103, nivel 15, LSASS credential dumping) generadas por mimikatz.exe en el endpoint Windows. Primera alerta: T1003.001 correcto. Segunda alerta, mismo ataque, mismo sistema, treinta segundos después: T1033.001, que no existe en el framework MITRE ATT&CK. Si ese triaje hubiera ido a TheHive sin revisión humana, el caso quedaría indexado con un TTP inexistente. Las correlaciones retrospectivas con otras alertas del mismo TTP fallarían. El analista L2 que recibiera el caso partiría de contexto incorrecto. La gravedad no está en el error puntual: está en que el error es indistinguible de un resultado correcto a simple vista, porque T1033.001 tiene el formato correcto y parece plausible en contexto.
+Durante la validación empírica con ataques reales del laboratorio, el pipeline procesó dos alertas consecutivas de la misma regla (102103, nivel 15, LSASS credential dumping). Primera alerta: T1003.001 correcto. Segunda alerta, mismo ataque, treinta segundos después: T1033.001, que no existe en el framework MITRE ATT&CK. Si ese triaje hubiera ido a TheHive sin revisión humana, el caso quedaría indexado con un TTP inexistente. La gravedad no está en el error puntual: está en que el error es indistinguible de un resultado correcto a simple vista.
 
 ---
 
 **5. Active Response de Wazuh no disparaba para alertas de auditd. El sistema parecía operativo.**
 
-La IA propuso Active Response como mecanismo de ejecución para PB01 (Reverse Shell Linux). Durante la implementación empírica se descubrió que Active Response no dispara correctamente para alertas con `log_format:audit` en Wazuh 4.9.2. El fallo no lanza ningún error, no genera ninguna excepción, no produce ningún log de fallo visible. El playbook aparecía en el inventario como activo y configurado. En producción, una reverse shell en el endpoint Linux habría generado la alerta correctamente, el L1 habría recibido la notificación Telegram correctamente, y la contención automatizada simplemente no habría ocurrido. Detección sin respuesta, sin ninguna señal de que algo fallaba. La corrección fue rediseñar hacia el patrón de integration script que usan las integraciones oficiales de Wazuh.
+La IA propuso Active Response como mecanismo de ejecución para PB01 (Reverse Shell Linux). Durante la implementación empírica se descubrió que Active Response no dispara correctamente para alertas con `log_format:audit` en Wazuh 4.9.2. El fallo no lanza ningún error. El playbook aparecía como activo y configurado. En producción, una reverse shell en el endpoint Linux habría generado la alerta correctamente y la contención automatizada simplemente no habría ocurrido. Detección sin respuesta, sin ninguna señal de que algo fallaba.
 
 ---
 
 **6. La IA protegió Defender y el Firewall. No contempló que el propio agente Wazuh es un objetivo.**
 
-En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso cubrir únicamente la desactivación de Windows Defender (Event ID 5001) y Windows Firewall (Event ID 2003). El analista identificó el gap más crítico posible de T1562.001: si el atacante detiene el agente Wazuh, el endpoint queda completamente ciego para el SIEM. No evade una regla de detección. Elimina el canal completo por el que llegan todas las reglas. Desde ese momento, cualquier actividad posterior en el endpoint (movimiento lateral, credential dumping, exfiltración) ocurre en silencio total. La cobertura añadida (reglas 101902/101903/101905) detecta la parada del agente y dispara alerta de nivel crítico antes de que el endpoint desaparezca del dashboard.
+En ESC19 (T1562.001), la IA propuso cubrir únicamente la desactivación de Windows Defender (EID 5001) y Windows Firewall (EID 2003). El analista identificó el gap más crítico: si el atacante detiene el agente Wazuh, el endpoint queda completamente ciego para el SIEM. No evade una regla. Elimina el canal completo por el que llegan todas las reglas.
 
 ---
 
-**El analista L1 no va a desaparecer. Va a dejar de mirar logs para convertirse en quien valida, interroga y corrige a la IA. ARGOS documenta exactamente eso, con 91 correcciones y los registros de cada una.**
+**El analista L1 no va a desaparecer. Va a dejar de mirar logs para convertirse en quien valida, interroga y corrige a la IA. ARGOS documenta exactamente eso, con 58 correcciones a Claude Sonnet 4.6, 25 iteraciones sobre Mistral 7B, y los registros de cada una.**
+
+---
+
+## PhishGuard · Módulo de análisis de phishing
+
+[PhishGuard](https://github.com/Miguel-R13/PhishGuard) es una herramienta standalone de análisis estático offline de correos electrónicos `.eml`, desarrollada como complemento a ARGOS para el triaje del vector phishing.
+
+| Característica | Detalle |
+|---|---|
+| Indicadores | 39 indicadores en 4 módulos (cabeceras, URLs, adjuntos, IOCs) |
+| Tests automatizados | 152 tests · suite ejecutable con un comando |
+| Veredictos | CLEAN (0-10) · SUSPICIOUS (11-40) · MALICIOUS (41-100) |
+| Exit codes | 0=CLEAN · 1=SUSPICIOUS · 2=MALICIOUS · 3=error |
+| Mapeo MITRE | Incluido en el reporte · deduplicado por TTP |
+| Dependencias | Sin dependencias obligatorias · ejecución offline |
+| Output | JSON exportable para adjuntar al ticket o ingestar en el SIEM |
+
+**Uso:**
+```bash
+python3 phishguard.py --full correo.eml --json evidencia.json
+```
+
+La decisión de mantenerlo como herramienta standalone responde a criterio SOC: el análisis de phishing requiere descarga manual del `.eml` y criterio de contexto del ticket que la automatización total eliminaría.
 
 ---
 
@@ -233,7 +336,7 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 ### Bloque Linux · Endpoint 192.168.234.30 · Kill chain completa
 
 | # | Escenario | TTP MITRE ATT&CK | Estado |
-| --- | --- | --- | --- |
+|---|---|---|---|
 | ESC01 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
 | ESC02 | Fuerza bruta SSH | T1110 · Brute Force | ✅ |
 | ESC03 | Enumeración de usuarios | T1087.001 · Account Discovery | ✅ |
@@ -248,7 +351,7 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 ### Bloque Windows · Endpoint 192.168.234.20 · Kill chain completa
 
 | # | Escenario | TTP MITRE ATT&CK | Estado |
-| --- | --- | --- | --- |
+|---|---|---|---|
 | ESC11 | Reconocimiento de red con Nmap | T1046 · Network Service Discovery | ✅ |
 | ESC12 | Fuerza bruta RDP | T1110 · Brute Force | ✅ |
 | ESC13 | Enumeración de usuarios Windows | T1087.001 · Account Discovery | ✅ |
@@ -267,7 +370,7 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 ### Bloque YARA · Linux + Windows
 
 | # | Regla YARA | Escenario | Fase Kill Chain | MITRE | Estado |
-| --- | --- | --- | --- | --- | --- |
+|---|---|---|---|---|---|
 | YARA-01 | Bash reverse shell script en disco | ESC05 | Execution | T1059.004 | ✅ |
 | YARA-02 | Bash reverse shell en crontab | ESC06 | Persistence | T1053.003 | ✅ |
 | YARA-03 | Ingress tool transfer ELF + C2 frameworks | ESC10 | C2 | T1105 | ✅ |
@@ -296,7 +399,7 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 ### Bloque Suricata · Red 192.168.234.0/24 · 5 capas kill chain
 
 | # | Escenario | Capa | TTP MITRE ATT&CK | Modo | Estado |
-| --- | --- | --- | --- | --- | --- |
+|---|---|---|---|---|---|
 | SURICATA-ESC01 | TCP SYN Port Scan nmap invariant win:1024 | Reconocimiento | T1046 | alert | ✅ |
 | SURICATA-ESC01b | Generic Scanner Threshold | Reconocimiento | T1046 | alert | ✅ |
 | SURICATA-ESC02 | SSH Brute Force banner no estándar | Acceso inicial | T1110.001 | alert+drop | ✅ |
@@ -319,23 +422,23 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 
 ### Bloque SOAR · Playbooks Python · Kill chain completa
 
-| # | Escenario | Sensores | Tipo | Estado |
-| --- | --- | --- | --- | --- |
-| PB01 | Reverse Shell / C2 | ESC05/ESC15 + YARA-01/06 + SURICATA-ESC03 | Contención activa (ufw/netsh + kill) | ✅ |
-| PB02 | Brute Force SSH | ESC02 + SURICATA-ESC02 | Contención activa (ufw) | ✅ |
-| PB03 | Brute Force RDP | ESC12 + SURICATA-ESC09b | Contención activa (netsh) | ✅ |
-| PB04 | Exfiltración de datos | ESC10/ESC20 + SURICATA-ESC14/15 | Contención activa (kill + ufw/netsh) | ✅ |
-| PB05 | Movimiento lateral | ESC07/08/17/18 + SURICATA-ESC08/09/10/11 | Escalado humano | ✅ |
-| PB06 | Desactivación herramientas seguridad | ESC09/19 + YARA-09 | Escalado humano | ✅ |
-| PB07 | Persistencia | ESC06/16 + YARA-02/07 | Escalado humano | ✅ |
-| PB08 | Credential Dumping / LSASS | ESC21/22 + YARA-13/14/15 | Escalado humano obligatorio | ✅ |
-| PB09 | LOLBAS / Defense Evasion | ESC23/24 + YARA-16 al 24 | Escalado humano | ✅ |
-| PB10 | Beaconing / C2 red | SURICATA-ESC04/05/06/07 | Escalado humano | ✅ |
+| # | Escenario | Sensores | Tipo | MTTR | Estado |
+|---|---|---|---|---|---|
+| PB01 | Reverse Shell / C2 | ESC05/ESC15 + YARA-01/06 + SURICATA-ESC03 | Contención activa (ufw/netsh + kill) | < 1 s | ✅ |
+| PB02 | Brute Force SSH | ESC02 + SURICATA-ESC02 | Contención activa (ufw) | ~3 s | ✅ |
+| PB03 | Brute Force RDP | ESC12 + SURICATA-ESC09b | Contención activa (netsh) | < 3 s | ✅ |
+| PB04 | Exfiltración de datos | ESC10/ESC20 + SURICATA-ESC14/15 | Contención activa (kill + ufw/netsh) | < 1 s | ✅ |
+| PB05 | Movimiento lateral | ESC07/08/17/18 + SURICATA-ESC08/09/10/11 | Escalado humano | < 1 s notif. | ✅ |
+| PB06 | Desactivación herramientas seguridad | ESC09/19 + YARA-09 | Escalado humano | < 1 s notif. | ✅ |
+| PB07 | Persistencia | ESC06/16 + YARA-02/07 | Escalado humano | < 1 s notif. | ✅ |
+| PB08 | Credential Dumping / LSASS | ESC21/22 + YARA-13/14/15 | **Escalado humano obligatorio** · contención desactivada por diseño | < 1 s notif. | ✅ |
+| PB09 | LOLBAS / Defense Evasion | ESC23/24 + YARA-16 al 24 | Escalado humano | < 1 s notif. | ✅ |
+| PB10 | Beaconing / C2 red | SURICATA-ESC04/05/06/07 | Escalado humano | < 1 s notif. | ✅ |
 
 ### Triaje LLM · Pipeline Ollama local
 
 | Componente | Detalle | Estado |
-| --- | --- | --- |
+|---|---|---|
 | Modelo | Mistral 7B (inferencia CPU, 100% local) | ✅ |
 | Canal | SSH tunnel ED25519 · .10:8888 → Windows:11434 | ✅ |
 | Seguridad | OLLAMA_HOST=127.0.0.1, firewall Windows bloqueando puerto 11434, OpenSSH hardened | ✅ |
@@ -343,12 +446,13 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 | Caché | `argos_triage_cache.json` · indexado por alert_id · puente con TheHive | ✅ |
 | Notificación | Telegram bot ARGOS_SOC_Bot | ✅ |
 | Validación | 25 iteraciones en 5 escenarios · validación empírica con ataques reales | ✅ |
-| Errores documentados | Alucinaciones MITRE, confusión de playbooks, degradación de prompt acumulado | ✅ |
+| Errores documentados | Alucinaciones MITRE (24% tasa), confusión de playbooks, degradación de prompt acumulado | ✅ |
+| Output | 9 campos: SEVERIDAD · TECNICA MITRE · TACTICA MITRE · RESUMEN · INDICADORES · CONTENCION SOAR · ACCION L1 · ESCALAR A L2 · OBSERVACIONES | ✅ |
 
 ### Integración TheHive · Gestión de incidentes
 
 | Componente | Detalle | Estado |
-| --- | --- | --- |
+|---|---|---|
 | Instancia | TheHive 5.7.6 · all-in-one single node · VM dedicada | ✅ |
 | Backend | Cassandra 4.1 + Elasticsearch 7.x | ✅ |
 | Acceso | http://192.168.234.50:9000 · SOC LAN VMnet1 | ✅ |
@@ -363,23 +467,25 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 ## Estado y roadmap
 
 | Componente | Estado |
-| --- | --- |
+|---|---|
 | Wazuh 4.9.2 + OpenSearch + agentes | ✅ Implementado |
 | Sysmon v15 (SwiftOnSecurity) en endpoint Windows | ✅ Implementado |
 | ScriptBlock Logging en endpoint Windows | ✅ Implementado |
-| Reglas Sigma propias · 28 reglas (10 Linux + 18 Windows) | ✅ Completado |
+| Reglas Sigma propias · 24 reglas (10 Linux + 14 Windows) | ✅ Completado |
 | Reglas XML Wazuh propias · bloque Linux ESC01-ESC10 | ✅ Completado |
 | Reglas XML Wazuh propias · bloque Windows ESC11-ESC24 | ✅ Completado |
 | Pipeline YARA · FIM + Active Response + decoder + reglas XML | ✅ Implementado |
 | Reglas YARA · 24 reglas completas (YARA-01 a YARA-24) | ✅ Completado |
-| Suricata IDS/IPS · 27 reglas · 5 capas kill chain · 8 drops | ✅ Completado |
+| Suricata IDS/IPS · 25 reglas · 5 capas kill chain · 8 drops | ✅ Completado |
 | Playbooks SOAR en Python · 10 playbooks PB01-PB10 | ✅ Completado |
 | Notificaciones Telegram · canal ARGOS SOC Alerts | ✅ Completado |
 | Triaje LLM local (Ollama + Mistral 7B) | ✅ Completado |
 | Integración TheHive 5 · gestión de incidentes | ✅ Completado |
 | Dashboard de supervisión humana | ✅ Completado |
 | Evaluación cuantitativa (MTTD · MTTR · precisión LLM) | ✅ Completado |
-| Integración PhishGuard | 🔨 En desarrollo |
+| PhishGuard · análisis estático de phishing standalone | ✅ Completado |
+| Script tasa de acuerdo LLM-analista via TheHive API | 📅 Q4 2026 |
+| Migración a Suricata 7.x | 📅 Q4 2026 |
 | Release público completo | 📅 Q4 2026 |
 
 ---
@@ -387,7 +493,7 @@ En ESC19 (Desactivación de herramientas de seguridad, T1562.001), la IA propuso
 ## Infraestructura del laboratorio
 
 | VM | IP | SO | RAM | Rol |
-| --- | --- | --- | --- | --- |
+|---|---|---|---|---|
 | ARGOS-Wazuh | 192.168.234.10 | Ubuntu 22.04 | 8 GB | Wazuh 4.9.2 + OpenSearch + SOAR + LLM daemons |
 | ARGOS-Windows | 192.168.234.20 | Windows 10 Pro | 4 GB | Endpoint Windows + Ollama/Mistral 7B |
 | ARGOS-Linux | 192.168.234.30 | Ubuntu 22.04 | 2 GB | Endpoint Linux |
@@ -406,43 +512,35 @@ ARGOS/
 │   ├── sigma/                  # Reglas Sigma propias (.yml) · Linux + Windows
 │   ├── wazuh/                  # Reglas XML Wazuh propias · Linux + Windows
 │   │   ├── active-response/    # Scripts Active Response YARA
-│   │   │   ├── argos_yara_scan.py      # Script AR Linux
-│   │   │   └── argos_yara_scan_win.py  # Script AR Windows
+│   │   │   ├── argos_yara_scan.py
+│   │   │   └── argos_yara_scan_win.py
 │   │   ├── argos_yara_decoder.xml
 │   │   ├── argos_yara_rules.xml        # Reglas 103000-103024
 │   │   └── argos_suricata_rules.xml    # Reglas 110001-110021
-│   ├── suricata/               # Reglas Suricata propias · 27 reglas · 5 capas
-│   │   └── argos.rules         # 19 alert + 8 drop · IDS/IPS
+│   ├── suricata/               # Reglas Suricata propias · 25 reglas · 5 capas
+│   │   └── argos.rules         # 17 alert + 8 drop · IDS/IPS
 │   └── yara/
 │       ├── linux/              # 5 reglas YARA bloque Linux (YARA-01 a YARA-05)
 │       └── windows/            # 19 reglas YARA bloque Windows (YARA-06 a YARA-24)
 ├── soar/
 │   └── playbooks/              # 10 playbooks SOAR Python + servicios systemd
-│       ├── argos_pb01_integration.py
-│       ├── argos_pb01_windows_integration.py
-│       ├── argos_pb02_integration.py
-│       ├── argos_pb03_integration.py
-│       ├── argos_pb04_integration.py
-│       ├── argos_pb04_windows_integration.py
-│       ├── argos_pb05_integration.py
-│       ├── argos_pb06_integration.py
-│       ├── argos_pb07_integration.py
-│       ├── argos_pb08_integration.py
-│       ├── argos_pb09_integration.py
-│       ├── argos_pb10_integration.py
-│       └── argos-pb0*.service
 ├── llm/
-│   ├── argos_triage_llm.py          # Daemon triaje tiempo real · alerts.json → Ollama → caché + Telegram
-│   ├── argos_chat.py                # Herramienta desarrollo prompt interactivo
-│   ├── argos_test_llm.py            # Test básico de inferencia
-│   └── argos-ollama-tunnel.service  # Servicio systemd SSH tunnel
+│   ├── argos_triage_llm.py
+│   ├── argos_chat.py
+│   ├── argos_test_llm.py
+│   └── argos-ollama-tunnel.service
 ├── thehive/
-│   ├── argos_thehive_integration.py # Monitoriza alerts.json · crea casos nivel 13+ con triaje LLM adjunto
-│   ├── argos-thehive.service        # Servicio systemd integración TheHive
-│   └── argos-triage-llm.service     # Servicio systemd daemon triaje LLM
-├── dashboard/                       # Dashboard supervisión humana OpenSearch
+│   ├── argos_thehive_integration.py
+│   ├── argos-thehive.service
+│   └── argos-triage-llm.service
+├── dashboard/
 ├── docs/
-│   └── architecture/                # Diagramas de arquitectura
+│   ├── architecture/
+│   │   ├── argos_arquitectura_5_capas.png
+│   │   └── argos_mitre_cobertura.png
+│   ├── argos_corrections_ia.html
+│   ├── argos_mitre_heatmap.html
+│   └── argos_model_comparison.html
 └── README.md
 ```
 
@@ -465,8 +563,8 @@ ARGOS/
 
 ## Autor
 
-**Miguel Reguero** · Blue Team / SOC Analyst
+**Miguel Reguero** · Blue Team / SOC Analyst  
 [LinkedIn](https://www.linkedin.com/in/miguel-reguero/) · [GitHub](https://github.com/Miguel-R13) · [Portfolio](https://miguel-r13.github.io)
 
-Master en Ciberseguridad · IMMUNE x Universidad Nebrija x Banco Santander · Nota media 9,5/10
-Top 5% TryHackMe · Autor de [PhishGuard](https://github.com/Miguel-R13/Phishguard)
+Máster en Ciberseguridad · IMMUNE x Universidad Nebrija x Banco Santander  
+Top 5% TryHackMe · Autor de [PhishGuard](https://github.com/Miguel-R13/PhishGuard)
