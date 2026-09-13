@@ -1,0 +1,197 @@
+
+<h2 class="sr-only">Comparativa de modelos de IA evaluados para ARGOS: calidad de razonamiento en ciberseguridad versus gaps críticos dejados sin cubrir. El tamaño del punto indica el coste por token.</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.outer{background:#111;border-radius:12px;padding:20px;font-family:-apple-system,sans-serif;color:#c3c2b7}
+.title{font-size:14px;font-weight:500;color:#f0efec;margin-bottom:6px}
+.desc{font-size:11px;color:#888;line-height:1.6;margin-bottom:14px}
+.leg-row{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;font-size:11px;color:#888}
+.leg{display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%}
+.axis-label{font-size:10px;fill:#666}
+.note{font-size:10px;color:#555;margin-top:10px;line-height:1.5}
+</style>
+<div class="outer">
+<div class="title">Evaluación comparativa de modelos de IA para ARGOS</div>
+<div class="desc">
+  Eje Y: calidad de razonamiento en ciberseguridad (arquitectura SOC, detección Blue Team, análisis de reglas Sigma/YARA/Suricata, lógica de analista L1/L2/L3). Puntuación relativa, referencia = Sonnet 4.6.<br>
+  Eje X: gaps críticos dejados sin cubrir (vectores de ataque no identificados, errores de clasificación MITRE, propuestas arquitectónicas incorrectas).<br>
+  Tamaño del punto: coste relativo por token/prompt. Punto grande = coste alto. Punto pequeño = coste bajo o sin coste (ejecución local).
+</div>
+<div class="leg-row">
+  <span class="leg"><span class="dot" style="background:#3987e5"></span>Elegido — diseño ARGOS</span>
+  <span class="leg"><span class="dot" style="background:#199e70"></span>Elegido — triaje local (sin coste)</span>
+  <span class="leg"><span class="dot" style="background:#555"></span>Evaluado, no seleccionado</span>
+</div>
+<svg id="chart" width="100%" viewBox="0 0 680 400" style="display:block"></svg>
+<div class="note">
+  * Ejecución 100% local, sin coste de API y sin envío de datos al exterior.<br>
+  La selección de Claude Sonnet 4.6 para el diseño de ARGOS y Mistral 7B para el triaje local responde a la combinación óptima de calidad de razonamiento, mínimos gaps críticos y coste por consulta asumible para el volumen del proyecto. La comparativa cuantitativa con benchmarks externos queda como línea de trabajo futuro por limitaciones de acceso a APIs de pago.
+</div>
+</div>
+<script>
+const svg=document.getElementById('chart');
+const W=680,H=400;
+const PAD={t:20,r:160,b:50,l:55};
+const pw=W-PAD.l-PAD.r;
+const ph=H-PAD.t-PAD.b;
+
+// Models: [label, x=gaps(0-4), y=quality(0-100), r=cost_size, color, asterisk]
+const M=[
+  ['Claude Sonnet 4.6',  0.25, 97, 18, '#3987e5', false],
+  ['Claude Haiku 4.5',   1.6,  68, 10, '#555', false],
+  ['Mistral 7B*',        2.0,  66, 7,  '#199e70', true],
+  ['GPT-5.4 Nano',       2.8,  71, 12, '#555', false],
+  ['GPT-5.4 Mini',       2.4,  60, 14, '#555', false],
+  ['GPT-OSS 20B*',       2.2,  52, 7,  '#555', true],
+  ['GPT-OSS 120B*',      3.4,  55, 7,  '#555', true],
+  ['Gemini 3.6 Flash',   3.6,  76, 11, '#555', false],
+  ['Gemini 3.5 Flash',   3.1,  65, 10, '#555', false],
+  ['Gemini 2.5 Flash',   1.4,  38, 9,  '#555', false],
+  ['GLM 5.2',            3.3,  74, 11, '#555', false],
+  ['LLaMA 3.1 8B*',      1.8,  40, 6,  '#555', true],
+  ['Microsoft Copilot',  2.6,  56, 15, '#555', false],
+  ['Phi-3 Mini*',        1.2,  32, 5,  '#555', true],
+];
+
+const xMin=0,xMax=4.2,yMin=20,yMax=105;
+function px(x){return PAD.l+((x-xMin)/(xMax-xMin))*pw}
+function py(y){return PAD.t+((yMax-y)/(yMax-yMin))*ph}
+
+// Draw background
+const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+bg.setAttribute('width',W);bg.setAttribute('height',H);bg.setAttribute('fill','#111');
+svg.appendChild(bg);
+
+// Subtle grid - very few lines
+const gridVals=[1,2,3,4];
+gridVals.forEach(v=>{
+  const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',px(v));l.setAttribute('x2',px(v));
+  l.setAttribute('y1',PAD.t);l.setAttribute('y2',H-PAD.b);
+  l.setAttribute('stroke','#222');l.setAttribute('stroke-width','1');
+  svg.appendChild(l);
+});
+[40,60,80,100].forEach(v=>{
+  const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',PAD.l);l.setAttribute('x2',W-PAD.r);
+  l.setAttribute('y1',py(v));l.setAttribute('y2',py(v));
+  l.setAttribute('stroke','#222');l.setAttribute('stroke-width','1');
+  svg.appendChild(l);
+  const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',PAD.l-6);t.setAttribute('y',py(v)+4);
+  t.setAttribute('text-anchor','end');t.setAttribute('font-size','9');t.setAttribute('fill','#555');
+  t.textContent=v;svg.appendChild(t);
+});
+
+// X axis ticks
+[[0,'mínimos'],[2,'moderados'],[4,'críticos']].forEach(([v,label])=>{
+  const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',px(v));t.setAttribute('y',H-PAD.b+14);
+  t.setAttribute('text-anchor','middle');t.setAttribute('font-size','9');t.setAttribute('fill','#555');
+  t.textContent=label;svg.appendChild(t);
+});
+
+// Ideal zone
+const iz=document.createElementNS('http://www.w3.org/2000/svg','rect');
+iz.setAttribute('x',px(0));iz.setAttribute('y',py(105));
+iz.setAttribute('width',px(1.0)-px(0));iz.setAttribute('height',py(84)-py(105));
+iz.setAttribute('fill','rgba(57,135,229,0.06)');
+iz.setAttribute('stroke','rgba(57,135,229,0.25)');
+iz.setAttribute('stroke-width','1');iz.setAttribute('stroke-dasharray','4 4');
+svg.appendChild(iz);
+const izt=document.createElementNS('http://www.w3.org/2000/svg','text');
+izt.setAttribute('x',px(0.05));izt.setAttribute('y',py(102));
+izt.setAttribute('font-size','9');izt.setAttribute('fill','rgba(57,135,229,0.5)');
+izt.textContent='zona ideal';svg.appendChild(izt);
+
+// Axis labels
+const xLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
+xLabel.setAttribute('x',PAD.l+pw/2);xLabel.setAttribute('y',H-4);
+xLabel.setAttribute('text-anchor','middle');xLabel.setAttribute('font-size','10');xLabel.setAttribute('fill','#666');
+xLabel.textContent='← menos gaps críticos          gaps críticos →';
+svg.appendChild(xLabel);
+
+const yLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
+yLabel.setAttribute('transform',`rotate(-90)`);
+yLabel.setAttribute('x',-(PAD.t+ph/2));yLabel.setAttribute('y',14);
+yLabel.setAttribute('text-anchor','middle');yLabel.setAttribute('font-size','10');yLabel.setAttribute('fill','#666');
+yLabel.textContent='calidad de razonamiento en ciberseguridad →';
+svg.appendChild(yLabel);
+
+// Axes
+const ax=document.createElementNS('http://www.w3.org/2000/svg','line');
+ax.setAttribute('x1',PAD.l);ax.setAttribute('x2',W-PAD.r);
+ax.setAttribute('y1',H-PAD.b);ax.setAttribute('y2',H-PAD.b);
+ax.setAttribute('stroke','#333');ax.setAttribute('stroke-width','1');
+svg.appendChild(ax);
+const ay=document.createElementNS('http://www.w3.org/2000/svg','line');
+ay.setAttribute('x1',PAD.l);ay.setAttribute('x2',PAD.l);
+ay.setAttribute('y1',PAD.t);ay.setAttribute('y2',H-PAD.b);
+ay.setAttribute('stroke','#333');ay.setAttribute('stroke-width','1');
+svg.appendChild(ay);
+
+// Compute initial label positions with manual offsets to avoid overlap
+const LO=[
+  [6, -4],   // Sonnet 4.6 - right
+  [6, -4],   // Haiku
+  [6, 4],    // Mistral
+  [6, -4],   // GPT Nano
+  [-120, -14], // GPT Mini - left
+  [-90, 10],   // GPT OSS 20B
+  [6, 4],    // GPT OSS 120B
+  [6, -4],   // Gemini 3.6
+  [6, 10],   // Gemini 3.5
+  [6, 4],    // Gemini 2.5
+  [-70, -14],  // GLM
+  [-90, -4],   // LLaMA
+  [6, 14],   // Copilot
+  [6, 4],    // Phi-3
+];
+
+// Draw points and labels
+M.forEach((m,i)=>{
+  const [label,x,y,r,color,star]=m;
+  const cx=px(x),cy=py(y);
+  const isSelected=color!=='#555';
+
+  // Glow for selected
+  if(isSelected){
+    const gl=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    gl.setAttribute('cx',cx);gl.setAttribute('cy',cy);gl.setAttribute('r',r+6);
+    gl.setAttribute('fill',color);gl.setAttribute('opacity','0.12');
+    svg.appendChild(gl);
+  }
+
+  // Circle
+  const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',r);
+  c.setAttribute('fill',color);c.setAttribute('opacity','0.75');
+  c.setAttribute('stroke',color);c.setAttribute('stroke-width',isSelected?'2':'1');
+  svg.appendChild(c);
+
+  // Label
+  const lx=cx+LO[i][0];
+  const ly=cy+LO[i][1];
+  const anchor=LO[i][0]>=0?'start':'end';
+
+  // Connector line
+  const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',cx+(LO[i][0]>=0?r:-r));
+  line.setAttribute('y1',cy);
+  line.setAttribute('x2',lx+(LO[i][0]>=0?-3:3));
+  line.setAttribute('y2',ly);
+  line.setAttribute('stroke',color);line.setAttribute('stroke-width','0.7');line.setAttribute('opacity','0.5');
+  svg.appendChild(line);
+
+  const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',lx);t.setAttribute('y',ly);
+  t.setAttribute('text-anchor',anchor);
+  t.setAttribute('font-size',isSelected?'11':'10');
+  t.setAttribute('font-weight',isSelected?'500':'400');
+  t.setAttribute('fill',isSelected?color:'#777');
+  t.setAttribute('dominant-baseline','middle');
+  t.textContent=label;
+  svg.appendChild(t);
+});
+</script>

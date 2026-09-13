@@ -1,0 +1,302 @@
+
+<h2 class="sr-only">Tabla de correcciones técnicas a Claude Sonnet 4.6 en ARGOS, clasificadas por impacto de seguridad</h2>
+
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans, sans-serif); }
+.header { padding: 1.5rem 0 1rem; }
+.header h3 { font-size: 18px; font-weight: 500; color: var(--text-primary); margin: 0 0 4px; }
+.header p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.kpi { background: var(--surface-1); border-radius: var(--radius); padding: 14px 16px; }
+.kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.kpi-value { font-size: 26px; font-weight: 500; color: var(--text-primary); }
+.kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.kpi.red .kpi-value { color: #a32d2d; }
+.kpi.amber .kpi-value { color: #854f0b; }
+.kpi.blue .kpi-value { color: #185fa5; }
+.kpi.green .kpi-value { color: #3b6d11; }
+
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+.filter-label { font-size: 12px; color: var(--text-muted); }
+.filter-btn { font-size: 12px; padding: 4px 10px; border-radius: var(--radius); border: 0.5px solid var(--border-strong); background: var(--surface-2); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+.filter-btn:hover { background: var(--surface-1); }
+.filter-btn.active { background: #1e3a5f; color: #fff; border-color: #1e3a5f; }
+
+.table-wrap { overflow-x: auto; border-radius: 10px; border: 0.5px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { background: #1e3a5f; }
+thead th { color: #fff; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 12px; text-align: left; white-space: nowrap; }
+tbody tr { border-bottom: 0.5px solid var(--border); transition: background 0.1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface-1); }
+tbody td { padding: 9px 12px; color: var(--text-primary); vertical-align: top; line-height: 1.4; }
+.td-num { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 11px; width: 32px; }
+.td-bloque { color: var(--text-secondary); font-size: 11px; white-space: nowrap; }
+.td-correc { font-weight: 500; }
+.td-impacto { font-size: 12px; color: var(--text-secondary); max-width: 260px; }
+
+.badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+.badge-critico { background: #fcebeb; color: #791f1f; }
+.badge-alto { background: #faeeda; color: #633806; }
+.badge-medio { background: #e6f1fb; color: #0c447c; }
+.badge-info { background: #eaf3de; color: #27500a; }
+
+.type-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--surface-0); border: 0.5px solid var(--border); color: var(--text-secondary); white-space: nowrap; margin: 1px; }
+
+.section-divider td { background: var(--surface-1); font-size: 11px; font-weight: 500; color: var(--text-muted); padding: 6px 12px; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 0.5px solid var(--border); }
+
+.hidden { display: none; }
+
+.mistral-section { margin-top: 2rem; }
+.mistral-header { background: #1e3a5f; color: #fff; border-radius: 10px 10px 0 0; padding: 12px 16px; font-size: 13px; font-weight: 500; }
+.mistral-table-wrap { border: 0.5px solid var(--border); border-radius: 0 0 10px 10px; overflow: hidden; }
+.mistral-table-wrap table thead { background: #2d5280; }
+</style>
+
+<div class="header">
+  <h3>Correcciones técnicas sobre IA en ARGOS — análisis de supervisión humana</h3>
+  <p>Cada fila documenta un gap real que habría quedado abierto sin criterio de analista SOC. Bloque 14.6 (Mistral 7B) se muestra por separado.</p>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi red">
+    <div class="kpi-label">Crítico</div>
+    <div class="kpi-value" id="cnt-critico">—</div>
+    <div class="kpi-sub">Sistema inoperable</div>
+  </div>
+  <div class="kpi amber">
+    <div class="kpi-label">Alto</div>
+    <div class="kpi-value" id="cnt-alto">—</div>
+    <div class="kpi-sub">Vector sin cubrir</div>
+  </div>
+  <div class="kpi blue">
+    <div class="kpi-label">Medio</div>
+    <div class="kpi-value" id="cnt-medio">—</div>
+    <div class="kpi-sub">Cobertura incompleta</div>
+  </div>
+  <div class="kpi green">
+    <div class="kpi-label">Total Sonnet</div>
+    <div class="kpi-value">49</div>
+    <div class="kpi-sub">+ 25 iter. Mistral</div>
+  </div>
+</div>
+
+<div class="filters">
+  <span class="filter-label">Filtrar:</span>
+  <button class="filter-btn active" onclick="filter('all', this)">Todos</button>
+  <button class="filter-btn" onclick="filter('critico', this)">Crítico</button>
+  <button class="filter-btn" onclick="filter('alto', this)">Alto</button>
+  <button class="filter-btn" onclick="filter('medio', this)">Medio</button>
+  <button class="filter-btn" onclick="filter('bloque-suricata', this)">Suricata (19)</button>
+  <button class="filter-btn" onclick="filter('bloque-yara', this)">YARA (12)</button>
+</div>
+
+<div class="table-wrap">
+<table id="main-table">
+<thead>
+  <tr>
+    <th>#</th>
+    <th>Bloque</th>
+    <th>Corrección</th>
+    <th>Propuesta IA</th>
+    <th>Decisión analista</th>
+    <th>Impacto si no se corrige</th>
+    <th>Severidad</th>
+    <th>Tipo</th>
+  </tr>
+</thead>
+<tbody id="main-body">
+</tbody>
+</table>
+</div>
+
+<div class="mistral-section">
+  <div class="mistral-header">Bloque 14.6 — Correcciones de prompt engineering sobre Mistral 7B (25 iteraciones en 5 escenarios)</div>
+  <div class="mistral-table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Escenario</th>
+        <th>Fallo del modelo</th>
+        <th>Corrección aplicada</th>
+        <th>Consecuencia operacional del fallo</th>
+        <th>Tipo</th>
+      </tr>
+    </thead>
+    <tbody id="mistral-body"></tbody>
+  </table>
+  </div>
+</div>
+
+<script>
+const data = [
+  { n:1, bloque:'14.0 Arquitectura', corr:'Rechazo de arquitectura de red plana', ia:'Red plana, todos los hosts en la misma subred sin segmentación', analista:'Segmentación en 4 zonas (servidor .10, Windows .20, Linux .30, atacantes .40)', impacto:'~50% de las reglas Suricata habrían sido inviables. Imposible distinguir tráfico lateral de tráfico legítimo.', sev:'critico', tipo:['Arquitectura'] },
+  { n:2, bloque:'14.1 Linux ESC01', corr:'Umbral UFW no alcanzable empíricamente', ia:'Umbral 15 eventos UFW BLOCK en 60 s', analista:'Umbral 10 validado empíricamente: UFW logging medium muestrea bloqueos, el 15 era inalcanzable en laboratorio real', impacto:'Regla de reconocimiento nunca habría disparado. El atacante habría completado el escaneo sin alerta.', sev:'critico', tipo:['Umbral','Campo'] },
+  { n:3, bloque:'14.1 Linux ESC01', corr:'Severidad incorrecta para T1046', ia:'Level 12 para port scanning (Discovery)', analista:'Level 10: Discovery no es urgencia crítica, compite incorrectamente con reverse shells a level 13', impacto:'Dashboard distorsionado, analista L1 pierde capacidad de priorizar. Port scan al mismo nivel que reverse shell activa.', sev:'medio', tipo:['Severidad'] },
+  { n:4, bloque:'14.1 Linux ESC01', corr:'Orden de prioridad en cadena jerárquica Wazuh', ia:'No considerado', analista:'Definir if_sid padre y nivel conscientemente: regla base etiqueta evento individual, correlación detecta patrón de volumen', impacto:'Arquitectura de reglas incorrecta: alertas suprimidas involuntariamente o nivel incorrecto en cascada.', sev:'medio', tipo:['Arquitectura'] },
+  { n:5, bloque:'14.1 Linux ESC02', corr:'Campo event_type no empírico en regla Sigma', ia:'event_type: authentication_failure (campo inexistente en logs reales)', analista:'Keywords extraídas de logs reales mediante simulación del ataque. Origen de la metodología empírica del proyecto.', impacto:'Regla Sigma nunca habría matcheado. Brute force SSH sin detección a nivel SIEM.', sev:'critico', tipo:['Campo'] },
+  { n:6, bloque:'14.1 Linux ESC02', corr:'Subtécnica MITRE no verificable T1110.001', ia:'Etiquetar T1110.001 Password Guessing', analista:'Técnica padre T1110: desde el log es imposible distinguir .001, .003 o .004, los tres generan eventos idénticos', impacto:'Clasificación MITRE falsa en el SIEM. Investigaciones indexadas incorrectamente, correlaciones futuras erróneas.', sev:'medio', tipo:['MITRE'] },
+  { n:7, bloque:'14.1 Linux ESC02', corr:'Gap: detección de brute force distribuida por same_user', ia:'Detección solo por same_source_ip', analista:'Regla adicional 100102 con same_user: atacante con botnet o proxies rotativos evade same_source_ip', impacto:'Ataques distribuidos desde múltiples IPs no detectados. Gap no cubierto en Wazuh ni SigmaHQ.', sev:'alto', tipo:['Cobertura'] },
+  { n:8, bloque:'14.1 Linux ESC03', corr:'Saturación de cola del agente Wazuh no detectada por IA', ia:'IA solo validó que la regla funcionaba, no monitorizó el sistema', analista:'Identificó alertas 203 "Agent event queue is full" en dashboard: ajustó queue_size a 10000', impacto:'Pipeline de ingestión saturado: alertas reales perdidas silenciosamente bajo carga de ataques.', sev:'alto', tipo:['Operativo'] },
+  { n:9, bloque:'14.1 Linux ESC03', corr:'Cobertura dual: comandos de enumeración acceden a /etc/passwd', ia:'Crear reglas auditd específicas por binario (whoami, id, who, last)', analista:'Simulación demostró que los comandos activan clave argos_user_files ya configurada. Reglas adicionales innecesarias.', impacto:'Configuración innecesaria añadida que habría complicado el mantenimiento y generado falsos positivos.', sev:'medio', tipo:['Cobertura'] },
+  { n:10, bloque:'14.1 Linux ESC04', corr:'Sobre-alerta en sudo: todo uso exitoso como crítico', ia:'Elevar severidad de todo uso de sudo a root (regla built-in 5402)', analista:'Alertar solo sobre usos de sudo que indican comportamiento malicioso específico. Admin usa sudo decenas de veces legítimamente.', impacto:'Saturación del analista L1 con cientos de falsos positivos diarios. Dashboard inoperable.', sev:'alto', tipo:['Umbral'] },
+  { n:11, bloque:'14.1 Linux ESC04', corr:'logsource incorrecto: category vs service en Sigma', ia:'category: file_access como logsource para reglas auditd', analista:'service: auditd: más específico y describe directamente la fuente. Campos de naturaleza distinta en spec Sigma.', impacto:'Reglas Sigma con logsource incorrecto no compilan correctamente con el backend openSearch/Wazuh.', sev:'medio', tipo:['Campo'] },
+  { n:12, bloque:'14.1 Linux ESC05', corr:'Detección reverse shell por keywords de comando vs syscall connect', ia:'Detectar keywords específicos: bash -i >&, nc -e /bin/sh, python3 -c', analista:'Monitorizar syscall connect a nivel de kernel: cualquier implementación debe ejecutarla obligatoriamente', impacto:'Un atacante con python3, perl, ruby o cualquier herramienta no listada habría pasado sin detectarse. Gap estructural.', sev:'critico', tipo:['Cobertura','Arquitectura'] },
+  { n:13, bloque:'14.1 Linux ESC07', corr:'Puerto 22 abierto desde cualquier origen (Anywhere)', ia:'ufw allow 22/tcp sin restricción de origen', analista:'Política de mínimo privilegio: SSH solo desde .10, .20 y .40. No rango /24 completo.', impacto:'Superficie de movimiento lateral innecesariamente amplia. Cualquier host comprometido en la red podría conectar por SSH.', sev:'alto', tipo:['Arquitectura'] },
+  { n:14, bloque:'14.1 Linux ESC07', corr:'Metodología de búsqueda por IP específica en lugar de keywords de evento', ia:'Verificar telemetría SSH filtrando por IP (grep "192.168.234.10")', analista:'Keywords de evento (Accepted password, Accepted publickey): detecta el patrón independientemente de la IP origen', impacto:'Detección que presupone conocer al atacante. Un origen desconocido nunca habría sido detectado.', sev:'medio', tipo:['Metodología'] },
+  { n:15, bloque:'14.1 Linux ESC08', corr:'Cobertura incompleta T1570: solo SCP', ia:'Regla Sigma solo para SCP', analista:'MITRE documenta: scp, sftp, rsync, curl, wget, ftp, Python3 HTTP. Separación por mecanismo de transporte.', impacto:'T1570 con cobertura parcial. Atacante usando rsync, Python3 HTTP o SFTP: sin detección.', sev:'alto', tipo:['Cobertura'] },
+  { n:16, bloque:'14.1 Linux ESC08', corr:'Análisis incorrecto del origen de eventos SSH en logs distribuidos', ia:'Sugirió que "Accepted password from .10" en logs de .30 podría ser conexión PowerShell del portátil', analista:'Imposible: PowerShell va hacia .10, nunca aparecería en .30. Es la autenticación SCP desde .10 hacia .30.', impacto:'Error de razonamiento sobre topología. En un incidente real habría llevado al L1 a investigar el vector equivocado.', sev:'medio', tipo:['Análisis'] },
+  { n:17, bloque:'14.1 Linux ESC08', corr:'Telemetría /etc/passwd genera ruido inaceptable', ia:'Monitorizar /etc/passwd con -p rwa para detectar SCP/SFTP', analista:'El archivo es leído por sshd, cron, systemd, gdm, ps, top, Wazuh: cientos de eventos legítimos por minuto', impacto:'Dashboard completamente inutilizable por ruido. Pipeline de detección degradado para todos los escenarios.', sev:'alto', tipo:['Ruido'] },
+  { n:18, bloque:'14.1 Linux ESC08', corr:'Alternativa execve descartada por limitación de kernel', ia:'Propuso -F exe=/usr/bin/scp con syscall execve', analista:'El filtro -F exe= con execve no está soportado en kernel Ubuntu 22.04 de las VMs ARGOS: error al cargar reglas', impacto:'Reglas auditd que fallan al cargarse dejan el endpoint sin telemetría para ese escenario.', sev:'alto', tipo:['Campo'] },
+  { n:19, bloque:'14.1 Linux ESC09', corr:'Omisión de UFW como objetivo T1562.001', ia:'Solo cubría desactivación de auditd y agente Wazuh', analista:'UFW es objetivo crítico: su desactivación abre todos los puertos del endpoint, anulando la segmentación de red', impacto:'Atacante desactiva UFW sin alerta. Todo el perímetro de red del endpoint anulado. ARGOS ciego al vector más sigiloso.', sev:'critico', tipo:['Cobertura'] },
+  { n:20, bloque:'14.1 Linux ESC10', corr:'Cobertura dual T1041/T1105: curl/wget sirven para descarga también', ia:'Solo exfiltración de datos (T1041)', analista:'curl/wget también se usan para T1105 Ingress Tool Transfer (descarga de herramientas maliciosas). Misma regla, contexto diferente.', impacto:'Fase de descarga de herramientas del atacante sin clasificación MITRE correcta. Correlación futura imposible.', sev:'medio', tipo:['MITRE','Cobertura'] },
+  { n:21, bloque:'14.1 Linux ESC10', corr:'Omisión de python3 en binarios de exfiltración', ia:'Monitorizaba: curl, wget, ftp, nc.openbsd, socat', analista:'python3 es herramienta frecuente para exfiltración HTTP. Omisión documentada en threat intelligence.', impacto:'Exfiltración via python3 -m http.server o requests sin detección por parte del motor de comportamiento.', sev:'alto', tipo:['Cobertura'] },
+  { n:22, bloque:'14.2 Win ESC11', corr:'Umbral frequency=10 replicado de Linux sin validación Windows', ia:'frequency=10 eventos 5157 en regla 101101 (copiado de Linux sin adaptar)', analista:'Windows Firewall en modo silencioso genera muchos menos eventos 5157 que UFW. Reducido a frequency=5 empíricamente.', impacto:'Regla 101101 nunca habría disparado ante escaneos nmap reales en Windows. Puerto .20 sin cobertura de reconocimiento.', sev:'critico', tipo:['Umbral'] },
+  { n:23, bloque:'14.2 Win ESC11', corr:'Falsos positivos de infraestructura VMware no anticipados', ia:'No anticipó tráfico LLMNR multicast, IPv6 link-local, gateways VMnet1/VMnet8', analista:'Identificó cada fuente de ruido y definió exclusiones quirúrgicas por destAddress y sourceAddress', impacto:'Dashboard saturado con alertas 101101 de nivel 10 sin relación con ataques. L1 incapaz de priorizar.', sev:'alto', tipo:['Ruido'] },
+  { n:24, bloque:'14.2 Win ESC12', corr:'Gap crítico: brute force RDP exitoso sin detectar', ia:'Solo detección de intentos fallidos (EID 4625)', analista:'Añadió regla 101202 correlacionando EID 4624 exitoso via NTLM: documenta el ciclo completo intentos+compromiso', impacto:'ARGOS habría detectado el intento pero no el momento más crítico: la confirmación de acceso con credenciales válidas.', sev:'critico', tipo:['Cobertura'] },
+  { n:25, bloque:'14.2 Win ESC13', corr:'Omisión de if_sid 92033: enumeración via PowerShell', ia:'Solo if_sid: 92031 "Discovery activity executed"', analista:'92033 "Discovery activity spawned via PowerShell" cubre el vector post-explotación más frecuente en ataques reales', impacto:'Enumeración ejecutada desde PowerShell (patrón dominante post-RDP) sin detección. Gap en el vector más común.', sev:'critico', tipo:['Cobertura'] },
+  { n:26, bloque:'14.2 Win ESC16', corr:'Telemetría Sysmon EID1 descartada prematuramente por IA', ia:'IA insistió múltiples veces en que Sysmon EID1 no era viable, proponía solo ScriptBlock Logging EID4104', analista:'Identificó Security EID 4698 via auditpol: cubre TODOS los vectores de creación de tareas independientemente del contexto', impacto:'Solo PowerShell detectado. Schtasks desde cmd.exe, WMI, scripts batch o cualquier otro contexto: sin alerta.', sev:'critico', tipo:['Cobertura','Campo'] },
+  { n:27, bloque:'14.2 Win ESC19', corr:'Omisión: desactivación de agente Wazuh y Sysmon como T1562.001', ia:'Solo Windows Defender (EID 5001) y Firewall (EID 2003)', analista:'Añadió reglas para detener agente Wazuh (101902-103905) y Sysmon (101904): pérdida de toda telemetría de endpoint', impacto:'Atacante desactiva el agente Wazuh. ARGOS completamente ciego al endpoint comprometido. Peor evasión posible.', sev:'critico', tipo:['Cobertura'] },
+  { n:28, bloque:'14.2 Win ESC20', corr:'Gap LOLBAS: solo certutil e Invoke-WebRequest', ia:'Dos reglas: certutil -encode (102000) e Invoke-WebRequest POST (102001)', analista:'Regla universal 102002 via if_group:sysmon_event1: cubre bitsadmin, curl, wget y cualquier LOLBAS con actividad de red', impacto:'Exfiltración via bitsadmin, curl.exe o cualquier otro LOLBAS de Windows sin detección.', sev:'alto', tipo:['Cobertura'] },
+  { n:29, bloque:'14.2 Win ESC23', corr:'Enfoque de firma por binario vs comportamiento invariante', ia:'Reglas específicas por binario: una para regsvr32, otra para mshta, otra para msiexec, etc.', analista:'if_group:sysmon_event3: captura cualquier LOLBAS con conexión de red. Cubre SwiftOnSecurity (50+ binarios).', impacto:'Un LOLBAS no listado (cualquier binario nativo con conexión de red) evade toda detección.', sev:'alto', tipo:['Arquitectura','Cobertura'] },
+  { n:30, bloque:'14.3 YARA ESC01', corr:'Cobertura YARA: 4 reglas propuestas vs 24 necesarias', ia:'4 reglas: PS reverse shell, mimikatz, certutil Base64, PS EncodedCommand', analista:'Análisis sistemático de ESC01-ESC24: 10 escenarios con artefacto real → 24 reglas YARA con metodología documentada', impacto:'20 escenarios sin detección de contenido en disco. Capa 2 prácticamente inexistente.', sev:'critico', tipo:['Cobertura','Arquitectura'] },
+  { n:31, bloque:'14.3 YARA Linux', corr:'Metodología de strings limitada al artefacto del laboratorio', ia:'Strings invariantes solo del artefacto real generado en laboratorio', analista:'Amplió a 2 vías: empírica (artefacto real) + conocimiento de dominio (Neo23x0, ANY.RUN, ReversingLabs, awesome-yara)', impacto:'Variantes de malware conocidas por la comunidad no cubiertas por desconocimiento de threat intelligence.', sev:'medio', tipo:['Metodología'] },
+  { n:32, bloque:'14.3 YARA ESC05', corr:'ESC05 considerado sin artefacto YARA', ia:'One-liner bash no escribe fichero a disco', analista:'En ataques reales el operador guarda el payload .sh para reutilizarlo. Strings invariantes: /dev/tcp, bash -i, >&', impacto:'Scripts de reverse shell persistentes en disco sin detección de contenido. Vector de persistencia oculto.', sev:'alto', tipo:['Cobertura'] },
+  { n:33, bloque:'14.3 YARA Windows', corr:'ESC19 considerado sin artefacto YARA', ia:'Los cmdlets Set-MpPreference, Stop-Service no generan artefacto en disco', analista:'Script .ps1 coordinado de desactivación es el vector más frecuente. Strings absolutamente maliciosos en combinación.', impacto:'Scripts de desactivación coordinada de defensas sin detección de contenido.', sev:'alto', tipo:['Cobertura'] },
+  { n:34, bloque:'14.3 YARA-01', corr:'Cobertura insuficiente de strings para bash reverse shell', ia:'Condición all of them: /dev/tcp/, bash -i, >&', analista:'Rediseñó: /dev/tcp/ obligatorio + 2 de 5 indicadores secundarios (0>&1, exec bash, /bin/bash, etc.)', impacto:'Variantes documentadas de reverse shell bash sin cobertura. Atacante que omite ">& /dev/tcp" evade la regla.', sev:'alto', tipo:['Cobertura'] },
+  { n:35, bloque:'14.3 YARA-02', corr:'Solo vector bash /dev/tcp en crontab', ia:'Una regla para bash reverse shell via /dev/tcp en crontab', analista:'Añadió 4 vectores: curl/wget|bash, nc -e/ncat -e, ejecución desde /tmp/, payload Base64 con base64 -d|bash', impacto:'4 vectores de persistencia via crontab sin detección. Los más sigilosos (Base64) completamente invisibles.', sev:'alto', tipo:['Cobertura'] },
+  { n:36, bloque:'14.3 YARA-03', corr:'Detección por ruta de sistema de archivos en lugar de contenido de archivo', ia:'Detectar binarios ELF en /tmp/ buscando el string "/tmp/" dentro del contenido', analista:'YARA busca strings DENTRO del archivo, no en la ruta. Eliminó ese vector incorrecto; amplió C2 frameworks (Cobalt Strike, Sliver, Havoc, Chisel, Ligolo)', impacto:'Premisa técnicamente incorrecta: la regla nunca habría matcheado ningún binario ELF en ninguna ruta.', sev:'critico', tipo:['Campo','Cobertura'] },
+  { n:37, bloque:'14.3 YARA-04/05', corr:'Bloque Linux incompleto: scripts Python/Perl y webshells sin cobertura', ia:'Bloque YARA Linux terminado con 3 reglas (01-03)', analista:'Identificó 2 gaps críticos: reverse shells en lenguajes interpretados (YARA-04) y webshells PHP/Python (YARA-05)', impacto:'Reverse shells en Python o Perl y webshells en Linux: sin ninguna capa de detección de contenido.', sev:'critico', tipo:['Cobertura'] },
+  { n:38, bloque:'14.3 YARA-05', corr:'Strings individuales para webshells vs patrón universal invariante', ia:'Strings individuales para vectores específicos de webshell PHP y Python', analista:'Patrón universal regex: función de ejecución + fuente input HTTP en misma línea. Cubre todas las variantes conocidas en threat intelligence.', impacto:'Webshell con cualquier función de ejecución no listada (eval, passthru, system, exec...) evade la detección.', sev:'alto', tipo:['Arquitectura','Cobertura'] },
+  { n:39, bloque:'14.3 YARA Windows Arq', corr:'Regla base OS-específica genera ruido innecesario', ia:'Regla base 103000 para Linux, regla base 103050 para Windows', analista:'Una sola regla base genérica 103000: el OS ya es identificable por yara_file. Reduce alertas por evento de 3 a 2.', impacto:'Dashboard con el doble de alertas por cada detección YARA. Ruido estructural en toda la capa de contenido.', sev:'medio', tipo:['Arquitectura','Ruido'] },
+  { n:40, bloque:'14.3 YARA Windows Arq', corr:'Active Response en PowerShell vs Python unificado', ia:'Script Active Response Windows en PowerShell', analista:'Python es el estándar en Wazuh. Dos lenguajes para la misma función = inconsistencia de mantenimiento. Python con wrapper .bat.', impacto:'Mantenimiento duplicado. Un cambio en la lógica requiere modificar dos scripts en lenguajes distintos.', sev:'medio', tipo:['Arquitectura'] },
+  { n:41, bloque:'14.3 YARA Windows Arq', corr:'5 rutas FIM Linux omitidas', ia:'5 rutas FIM en endpoint Linux', analista:'Añadió /dev/shm, /var/spool/cron/crontabs/, /etc/profile.d, /etc/init.d, /usr/local/bin. Descartó /run por ruido.', impacto:'Malware en memoria compartida /dev/shm, crontabs de usuario y scripts de login: sin detección FIM.', sev:'alto', tipo:['Cobertura'] },
+  { n:42, bloque:'14.3 YARA-09', corr:'3 vectores T1562.001 Windows omitidos', ia:'Set-MpPreference -Disable* y Stop-Service', analista:'Añadió: MpCmdRun -RemoveDefinitions (Red Canary top-frecuente), Add-MpPreference exclusiones (más sigiloso), wevtutil cl (borrado de evidencias)', impacto:'Las técnicas de evasión de Defender más frecuentes en 2024-2025 sin cobertura YARA.', sev:'alto', tipo:['Cobertura'] },
+  { n:43, bloque:'14.3 YARA-13/14/15', corr:'Una regla genérica vs tres reglas específicas mimikatz', ia:'Una regla YARA cubriendo el binario PE de mimikatz', analista:'3 reglas: script con comandos mimikatz (interceptar), log con credenciales (identificar comprometidas), LSASS minidump MDMP (compromiso total)', impacto:'Scripts de mimikatz, logs de credenciales y LSASS dumps sin diferenciación de respuesta. L1 no puede priorizar.', sev:'alto', tipo:['Cobertura','Arquitectura'] },
+  { n:44, bloque:'14.3 YARA-16/17/18/19', corr:'Una regla genérica LOLBAS vs cuatro específicas + FP documentados', ia:'Una regla genérica: LOLBAS + URL', analista:'4 reglas por tipo, gaps wmic/forfiles/diskshadow/pcalua, falsos positivos mshta.exe y bitsadmin.exe resueltos con regex de patrón exacto', impacto:'79% de ataques son malware-free (CrowdStrike 2025). LOLBAS sin cobertura específica = gaps en vector dominante.', sev:'critico', tipo:['Cobertura','Arquitectura'] },
+  { n:45, bloque:'14.4 Suricata', corr:'Modo IDS puro vs IDS+IPS', ia:'Modo IDS puro justificado como suficiente para TFM de SOC', analista:'XDR profesional requiere capacidad de respuesta activa de red. AF_PACKET con drop via NFQUEUE.', impacto:'Sin capacidad de bloqueo activo de tráfico malicioso. ARGOS habría sido solo un sistema de observación pasiva.', sev:'critico', tipo:['Arquitectura'] },
+  { n:46, bloque:'14.4 Suricata', corr:'Interfaz de captura no justificada técnicamente', ia:'No consideró la segmentación de zonas al configurar Suricata', analista:'ens33 seleccionado conscientemente: adaptador Host-only que conecta las 4 zonas. Visibilidad completa tráfico este-oeste.', impacto:'Interfaz incorrecta = tráfico entre zonas no capturado. Toda la detección de red de ARGOS ciega a ataques laterales.', sev:'critico', tipo:['Arquitectura'] },
+  { n:47, bloque:'14.4 Suricata', corr:'Carga masiva de 68.339 reglas ET Open sin auditar', ia:'suricata-update cargando ET Open automáticamente', analista:'ET Open como referencia de análisis de gaps, no desplegable en producción. Solo reglas propias validadas empíricamente.', impacto:'Miles de falsos positivos sin relación con la kill chain de ARGOS. Dashboard inservible por ruido masivo.', sev:'critico', tipo:['Arquitectura','Ruido'] },
+  { n:48, bloque:'14.4 Suricata', corr:'Arquitectura de cobertura: replicar kill chain vs cobertura diferencial', ia:'Reglas Suricata replicando vectores ya cubiertos por Sigma/XML y YARA', analista:'Red cubre solo lo que endpoint no puede ver: 5 capas diferenciales (reconocimiento, C2, movimiento lateral, exfiltración)', impacto:'Duplicación de alertas sin cobertura nueva. Visibilidad de red nula para los vectores exclusivamente visibles en tráfico.', sev:'critico', tipo:['Arquitectura'] },
+  { n:49, bloque:'14.4 SURICATA-ESC01', corr:'$EXTERNAL_NET excluye la zona de atacantes interna', ia:'$EXTERNAL_NET como origen: "todo lo que no es HOME_NET"', analista:'any como origen: Kali .40 está dentro de 192.168.234.0/24. $EXTERNAL_NET la excluye por definición.', impacto:'El 100% de los ataques del laboratorio (este-oeste desde .40) habría sido invisible para todas las reglas Suricata con $EXTERNAL_NET.', sev:'critico', tipo:['Campo','Arquitectura'] },
+  { n:50, bloque:'14.4 SURICATA-ESC01b', corr:'Cobertura solo para nmap por window:1024', ia:'Solo SURICATA-ESC01 con invariante window:1024 de nmap', analista:'Segunda regla ESC01b: threshold 50 SYN en 5 s desde misma IP. Detecta cualquier escáner por comportamiento.', impacto:'Masscan, zmap o cualquier herramienta con window size diferente: sin detección de reconocimiento.', sev:'alto', tipo:['Cobertura'] },
+  { n:51, bloque:'14.4 SURICATA-ESC02', corr:'Blacklist de banners SSH vs whitelist empírica', ia:'Blacklist: una regla para hydra, otra para medusa', analista:'Whitelist empírica: solo OpenSSH es cliente legítimo en el entorno. Todo lo demás es anómalo por definición.', impacto:'Herramienta de brute force con banner diferente o script casero: sin detección. Blacklist siempre incompleta.', sev:'critico', tipo:['Arquitectura','Cobertura'] },
+  { n:52, bloque:'14.4 SURICATA C2', corr:'Solo 3 vectores C2 vs 10 necesarios', ia:'3 vectores C2: reverse shell TCP, beaconing HTTP, DNS tunneling', analista:'10 vectores: añadió ICMP tunneling, IRC, SMB C2 (Cobalt Strike/APT29), JA3/JA3S, long connection, low-and-slow', impacto:'7 vectores C2 de uso frecuente en APTs reales sin cobertura. Atacante usando cualquiera de ellos: indetectable.', sev:'alto', tipo:['Cobertura'] },
+  { n:53, bloque:'14.4 SURICATA-ESC03', corr:'Solo C2 interno, sin cobertura C2 externo a internet', ia:'Una regla: reverse shell hacia zona atacantes .40', analista:'Dos reglas: ESC03 (C2 interno .40, sid:9000004) y ESC03b (C2 externo fuera SOC LAN, puertos no estándar, sid:9000005)', impacto:'Reverse shell que conecta a infraestructura C2 real en internet: invisible para Suricata ARGOS.', sev:'critico', tipo:['Cobertura'] },
+  { n:54, bloque:'14.4 SURICATA-ESC04', corr:'Blacklist de User-Agents vs whitelist de comportamiento de red', ia:'Blacklist de User-Agents anómalos para beaconing HTTP', analista:'Ningún tráfico HTTP existe en ens33 entre zonas. Todo HTTP en la SOC LAN es anómalo por definición.', impacto:'C2 framework con User-Agent personalizado o legítimo: evade cualquier blacklist. Whitelist de comportamiento es infalible.', sev:'alto', tipo:['Arquitectura'] },
+  { n:55, bloque:'14.4 SURICATA-ESC06', corr:'Restricción por IP origen vs invariante de tamaño de payload ICMP', ia:'Limitar origen a zona atacantes .40 para evitar FP', analista:'dsize:>100: ningún ping legítimo supera 64 bytes. Detecta ICMP tunneling desde cualquier origen comprometido.', impacto:'ICMP tunneling desde host interno comprometido (no .40) sin detección.', sev:'alto', tipo:['Arquitectura'] },
+  { n:56, bloque:'14.4 Suricata Capa4', corr:'Solo 3 vectores movimiento lateral en red vs 6', ia:'SSH multi-destino, RDP brute force, SMB anómalo', analista:'Añadió WMI (puerto 135 RPC), Pass-the-Hash/Ticket NTLM (correlaciona con YARA-15), port scan interno desde endpoints', impacto:'WMI lateral movement (APT29, Lazarus Group) y PtH post-credential-dump sin cobertura de red.', sev:'alto', tipo:['Cobertura'] },
+  { n:57, bloque:'14.4 SURICATA-ESC09', corr:'Origen HOME_NET y sin diferenciación de vectores RDP', ia:'Una regla RDP brute force con $HOME_NET y track by_src', analista:'Dos reglas: ESC09 track by_src (movimiento lateral) y ESC09b track by_dst (brute force clásico). Origen any.', impacto:'RDP brute force desde exterior invisible. Distinción movimiento lateral / brute force imposible en dashboard.', sev:'alto', tipo:['Cobertura','Arquitectura'] },
+  { n:58, bloque:'14.4 SURICATA-ESC15', corr:'FTP restringido a $HOME_NET en lugar de any', ia:'Detectar FTP desde $HOME_NET hacia any', analista:'FTP es obsoleto: cualquier tráfico FTP en la red es anómalo. any any → any 21 sin restricción de origen ni destino.', impacto:'FTP iniciado desde un servidor o dispositivo no-endpoint de la red: sin detección.', sev:'medio', tipo:['Arquitectura'] },
+  { n:59, bloque:'14.4 Suricata IPS', corr:'Solo 2 reglas IPS drop vs 8 vectores justificados', ia:'Drop selectivo solo FTP (ESC15) y SMB exterior (ESC16)', analista:'Añadió 6 vectores con certeza alta: SSH banner no estándar, Reverse Shell TCP, HTTP beaconing SOC LAN, DNS tunneling, ICMP tunneling, PtH NTLMSSP', impacto:'Tráfico claramente malicioso (reverse shell confirmada, beaconing HTTP en red interna) alcanzando el endpoint sin bloqueo activo.', sev:'alto', tipo:['Cobertura','Arquitectura'] },
+  { n:60, bloque:'14.5 SOAR', corr:'Arquitectura de playbooks: uno por regla de detección vs por escenario operativo', ia:'Un playbook por sensor: reverse shell via Suricata != reverse shell via auditd', analista:'10 playbooks por escenario operativo, alineado con Cortex XSOAR y Splunk SOAR. La respuesta es idéntica independientemente del sensor.', impacto:'Respuesta fragmentada: mismo incidente detectado por dos sensores ejecuta respuestas diferentes o duplicadas.', sev:'alto', tipo:['Arquitectura'] },
+  { n:61, bloque:'14.5 SOAR', corr:'Script multi-plataforma con detección de OS vs scripts independientes', ia:'Un único script Python con lógica condicional de detección de OS', analista:'Scripts independientes por plataforma: argos_pb01_linux.py y argos_pb01_windows.py. Comandos son completamente diferentes.', impacto:'Script con lógica de OS detection introduce puntos de fallo. Error en la detección de OS puede ejecutar comandos Linux en Windows.', sev:'alto', tipo:['Arquitectura'] },
+  { n:62, bloque:'14.5 SOAR', corr:'Active Response Wazuh no dispara para alertas de auditd', ia:'PB01 como Active Response de Wazuh con location:local', analista:'Integration script en .10 via tail -f + SSH. Patrón de integraciones oficiales Wazuh (VirusTotal, Slack, PagerDuty).', impacto:'PB01 (el playbook más crítico: reverse shell) completamente inoperante en Linux. SOAR Linux sin respuesta activa.', sev:'critico', tipo:['Campo','Arquitectura'] },
+  { n:63, bloque:'14.5 SOAR', corr:'Herramienta incorrecta para validar brute force RDP', ia:'Hydra como herramienta de brute force RDP', analista:'ncrack: implementa su propio cliente RDP y sí conecta contra Windows 10 moderno. Hydra usa freerdp y falla.', impacto:'Validación empírica imposible con hydra. Sin validación, la regla 101203 y PB03 quedan sin evidencia de funcionamiento.', sev:'medio', tipo:['Metodología'] },
+  { n:64, bloque:'14.5 SOAR', corr:'ESC10 sin regla XML de comportamiento', ia:'No identificó que ESC10 no tenía regla XML activa en el inventario de detección', analista:'Creó regla XML 100800 y regla auditd argos_exfiltration. Completó la triple capa para exfiltración Linux.', impacto:'Capa 1 (comportamiento) ausente para exfiltración Linux. Solo YARA y Suricata: sin correlación de eventos de proceso.', sev:'alto', tipo:['Cobertura'] },
+  { n:65, bloque:'14.5 SOAR', corr:'Filtro audit.success=yes incorrecto para curl en auditd', ia:'Filtro success=yes replicando el patrón de ESC05', analista:'curl devuelve EINPROGRESS (operación asíncrona), no exit=0. El filtro nunca se cumple para curl.', impacto:'Regla 100800 nunca habría disparado. Exfiltración via curl/wget completamente sin detección de comportamiento.', sev:'critico', tipo:['Campo'] },
+];
+
+const mistralData = [
+  { n:1, esc:'ESC05 - Reverse Shell', fallo:'Sin system prompt: interpretó "nivel 13" como videojuego Minecraft y clasificación gubernamental secreta', corr:'Definir rol SOC L1, contexto ARGOS y formato de respuesta obligatorio (9 campos)', consec:'LLM genérico inutilizable en SOC sin contexto de dominio. Triaje completamente erróneo desde la primera alerta.', tipo:['Guardrail'] },
+  { n:2, esc:'ESC05 - Reverse Shell', fallo:'T1059.004 clasificado como táctica Command and Control en lugar de Execution', corr:'Taxonomía MITRE explícita con táctica correcta para cada técnica', consec:'Alerta indexada como C2 en el SIEM. Correlaciones con eventos Execution de la misma campaña imposibles.', tipo:['MITRE'] },
+  { n:3, esc:'ESC05 - Reverse Shell', fallo:'Acción inmediata vaga sin referencia a playbooks SOAR', corr:'Añadir referencia explícita a playbooks SOAR por nombre e ID', consec:'L1 sin guía operacional concreta. Tiempo de respuesta aumentado al no conocer el playbook a ejecutar.', tipo:['Formato'] },
+  { n:4, esc:'ESC05 - Reverse Shell', fallo:'ESC05 usado como ID MITRE (nomenclatura interna ARGOS) en lugar de T1059.004', corr:'Aclaración explícita: ESC01-ESC29 son identificadores internos ARGOS, no IDs MITRE', consec:'Reporte de incidente con identificadores no estándar. Búsqueda en MITRE ATT&CK imposible con ESC05.', tipo:['MITRE'] },
+  { n:5, esc:'ESC05 - Reverse Shell', fallo:'Recomendó ejecutar PB01 cuando PB01 ya había actuado automáticamente', corr:'Guardrail: no repetir acciones del SOAR ya ejecutadas automáticamente', consec:'Double containment: dos ejecuciones de PB01 sobre el mismo incidente. Posible inconsistencia en estado de ufw.', tipo:['Guardrail'] },
+  { n:6, esc:'ESC05 - Reverse Shell', fallo:'Alucinación crítica: ID MITRE T1023 inexistente en el framework oficial', corr:'Guardrail anti-alucinación MITRE: prohibición explícita de inventar IDs', consec:'L1 busca T1023 en MITRE, no existe. Informe con técnica fantasma. Reglas de detección construidas sobre amenaza inexistente.', tipo:['Guardrail','MITRE'] },
+  { n:7, esc:'ESC21 - LSASS Credential Dump', fallo:'Recomendó verificar que mimikatz.exe había sido terminado (PB08 es escalado humano obligatorio)', corr:'Distinción crítica PB01-04 (automático) vs PB05-10 (escalado humano obligatorio)', consec:'Terminar mimikatz.exe puede causar BSOD o inestabilidad del sistema. Evidencia forense destruida antes del análisis.', tipo:['Guardrail'] },
+  { n:8, esc:'ESC21 - LSASS Credential Dump', fallo:'Guardrail no suficiente en primera iteración: fallo persistió', corr:'Prohibición explícita y detallada: NUNCA decir que el SOAR actuó en PB08, NUNCA decir que el proceso fue terminado', consec:'Un guardrail demasiado genérico no protege ante escenarios de alto riesgo. LLM requiere prohibiciones específicas por caso.', tipo:['Guardrail'] },
+  { n:9, esc:'ESC02 - Brute Force SSH', fallo:'T1110.001 Brute Force clasificado como táctica Execution en lugar de Credential Access', corr:'Añadir T1110.001 explícitamente a la taxonomía MITRE del system prompt', consec:'Mismo patrón sistémico que ESC05. Error de táctica en dos escenarios diferentes confirma que es fallo estructural del modelo.', tipo:['MITRE'] },
+  { n:10, esc:'ESC02 - Brute Force SSH', fallo:'Puerto 22 incluido como IOC sin aparecer en la alerta (invención de IOC)', corr:'Refuerzo del guardrail anti-invención con consecuencias forenses explícitas', consec:'IOCs inventados contaminan la cadena de evidencia. Reglas construidas sobre indicadores falsos. Puerto 22 como IOC genera falsos positivos masivos.', tipo:['Guardrail'] },
+  { n:11, esc:'ESC02 - Brute Force SSH', fallo:'Al reforzar anti-invención, omitió IOCs que sí estaban presentes en la alerta', corr:'Dos instrucciones separadas: "extrae TODOS los IOCs presentes" / "NO añadas IOCs no presentes"', consec:'Tensión entre dos guardrails produce un LLM que oscila entre inventar y omitir. Triaje inconsistente según la iteración.', tipo:['Formato','Guardrail'] },
+  { n:12, esc:'ESC02 - Brute Force SSH', fallo:'Acción L1 genérica (verificar proceso terminado) no aplica a brute force', corr:'Acciones específicas por tipo de playbook: PB02 → verificar bloqueo ufw + comprobar sesión SSH activa', consec:'L1 busca un proceso que terminar en un ataque de brute force. Acción incorrecta que no mitiga el incidente.', tipo:['Formato'] },
+  { n:13, esc:'ESC02 - Brute Force SSH', fallo:'Escalado L2 sin mencionar que el usuario comprometido es root', corr:'Instrucción: mencionar siempre el nivel de privilegios y acciones post-compromiso probables', consec:'L2 recibe escalado sin conocer que el acceso es root. Respuesta de menor urgencia ante el incidente más crítico.', tipo:['Formato'] },
+  { n:14, esc:'ESC02 - Brute Force SSH', fallo:'Artefacto "RESPUESTA:" al inicio del output, irremovible mediante instrucciones de prompt', corr:'Filtro Python en argos_chat.py: eliminación del prefijo en la capa de código de integración', consec:'Prefijo "RESPUESTA:" en todas las alertas de Telegram. Ruido visual en el canal operacional del SOC.', tipo:['Código'] },
+  { n:15, esc:'ESC07 - Movimiento Lateral', fallo:'SEVERIDAD MEDIA para alerta de nivel 13 (debe ser CRÍTICA según taxonomía Wazuh)', corr:'Instrucción explícita: nivel 13 = CRÍTICO, nivel 12 = ALTO, nivel 10-11 = MEDIO', consec:'Alerta crítica de movimiento lateral marcada como media. L1 puede no responder con urgencia inmediata.', tipo:['Severidad'] },
+  { n:16, esc:'ESC07 - Movimiento Lateral', fallo:'PB07 (Persistencia) asignado en lugar de PB05 (Movimiento lateral)', corr:'Añadir tabla explícita de mapeo escenario → playbook en el system prompt', consec:'L1 sigue procedimiento de persistencia para un incidente de movimiento lateral. Acciones de respuesta equivocadas.', tipo:['Guardrail'] },
+  { n:17, esc:'ESC07 - Movimiento Lateral', fallo:'Instrucciones contradictorias acumuladas en el prompt: CONTENCION SOAR definida dos veces con instrucciones distintas', corr:'Reescritura completa del system prompt con estructura limpia por secciones', consec:'LLM se confunde más que con el prompt original. Punto de inflexión metodológico: el prompt requiere refactorización como el código.', tipo:['Arquitectura'] },
+  { n:18, esc:'ESC07 - Movimiento Lateral', fallo:'Reproducción de instrucciones internas del system prompt en el output', corr:'Instrucción explícita: nunca reproducir ni parafrasear instrucciones del system prompt en la respuesta', consec:'Instrucciones del system prompt visibles en las alertas de Telegram del SOC. Fuga de información operacional interna.', tipo:['Guardrail'] },
+  { n:19, esc:'ESC07 - Movimiento Lateral', corr:'Prompt limpio resolvió todos los fallos en la primera iteración post-reescritura', fallo:'Regresión: tras refuerzo de guardrails, PB07 volvió a asignarse en lugar de PB05', consec:'Guardrails adicionales en prompt acumulado no son suficientes. La reescritura limpia supera al parche iterativo.', tipo:['Metodología'] },
+  { n:20, esc:'ESC24 - PS Ofuscado', fallo:'Táctica COMMAND AND CONTROL en lugar de DEFENSE EVASION para T1027.010', corr:'T1027 y T1027.010 añadidos a taxonomía con táctica correcta DEFENSE EVASION', consec:'PowerShell ofuscado indexado como C2. Correlaciones con otras técnicas de evasión imposibles.', tipo:['MITRE'] },
+  { n:21, esc:'ESC24 - PS Ofuscado', fallo:'Nombre de subtécnica incorrecto, confusión ESC23 vs ESC24 en CONTENCION SOAR', corr:'Distinción explícita ESC23 (LOLBAS/PB09) vs ESC24 (PS ofuscado/PB09 también). Nombre oficial T1027.010 Command Obfuscation.', consec:'L1 recibe acción de respuesta de LOLBAS ante un incidente de ofuscación PowerShell.', tipo:['MITRE','Guardrail'] },
+  { n:22, esc:'ESC24 - PS Ofuscado', fallo:'Placeholder de ESCALAR A L2 sin rellenar ("TBD", "ver playbook")', corr:'Instrucción: rellenar siempre ESCALAR A L2 con criterio específico del escenario', consec:'L1 escala sin criterio concreto. L2 recibe escalado sin contexto de por qué escalar.', tipo:['Formato'] },
+  { n:23, esc:'ESC21 prod. - LSASS real', fallo:'Alucinación T1033.001 en producción durante alerta LSASS real (T1033.001 no existe en ATT&CK)', corr:'Guardrail de producción: supervisión humana obligatoria en cada triaje', consec:'Evidencia empírica directa del argumento central del TFM: LLM alucina IDs MITRE con el mismo nivel de confianza que los correctos.', tipo:['Guardrail','MITRE'] },
+  { n:24, esc:'ESC21 prod. - LSASS real', fallo:'Mismo ataque procesado dos veces: primera vez T1003.001 correcto, segunda vez T1033.001 alucinado', corr:'Supervisión de cada respuesta individual, no delegación por lote', consec:'No-determinismo en producción confirmado. El mismo prompt produce IDs MITRE distintos en iteraciones consecutivas.', tipo:['Guardrail'] },
+  { n:25, esc:'ESC02 - Brute Force SSH', fallo:'Respuesta de alta calidad en iteración anterior: error de severidad recurrente para nivel 12', corr:'Instrucción de severidad incorporada al guardrail estable del prompt definitivo', consec:'Error de severidad es patrón sistémico: aparece en ESC02, ESC07 y ESC10. No aislado sino estructural.', tipo:['Severidad'] },
+];
+
+function renderBadge(sev) {
+  const map = { critico: ['badge-critico', 'Crítico'], alto: ['badge-alto', 'Alto'], medio: ['badge-medio', 'Medio'] };
+  const [cls, label] = map[sev] || ['badge-info', sev];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function renderTypes(types) {
+  return types.map(t => `<span class="type-badge">${t}</span>`).join('');
+}
+
+let currentFilter = 'all';
+
+function renderMain() {
+  const tbody = document.getElementById('main-body');
+  let crit = 0, alto = 0, medio = 0;
+  const rows = data.filter(d => {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'critico') return d.sev === 'critico';
+    if (currentFilter === 'alto') return d.sev === 'alto';
+    if (currentFilter === 'medio') return d.sev === 'medio';
+    if (currentFilter === 'bloque-suricata') return d.bloque.includes('Suricata') || d.bloque.includes('SURICATA');
+    if (currentFilter === 'bloque-yara') return d.bloque.includes('YARA') || d.bloque.includes('14.3');
+    return true;
+  });
+
+  data.forEach(d => {
+    if (d.sev === 'critico') crit++;
+    else if (d.sev === 'alto') alto++;
+    else medio++;
+  });
+
+  document.getElementById('cnt-critico').textContent = crit;
+  document.getElementById('cnt-alto').textContent = alto;
+  document.getElementById('cnt-medio').textContent = medio;
+
+  tbody.innerHTML = rows.map(d => `
+    <tr data-sev="${d.sev}" data-bloque="${d.bloque.toLowerCase()}">
+      <td class="td-num">${d.n}</td>
+      <td class="td-bloque">${d.bloque}</td>
+      <td class="td-correc">${d.corr}</td>
+      <td class="td-impacto" style="color:var(--text-muted);font-size:12px;">${d.ia}</td>
+      <td class="td-impacto" style="font-size:12px;">${d.analista}</td>
+      <td class="td-impacto">${d.impacto}</td>
+      <td>${renderBadge(d.sev)}</td>
+      <td>${renderTypes(d.tipo)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderMistral() {
+  const tbody = document.getElementById('mistral-body');
+  tbody.innerHTML = mistralData.map(d => `
+    <tr>
+      <td class="td-num">${d.n}</td>
+      <td class="td-bloque">${d.esc}</td>
+      <td class="td-correc" style="font-size:12px;">${d.fallo}</td>
+      <td class="td-impacto" style="font-size:12px;">${d.corr}</td>
+      <td class="td-impacto">${d.consec}</td>
+      <td>${renderTypes(d.tipo)}</td>
+    </tr>
+  `).join('');
+}
+
+function filter(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMain();
+}
+
+renderMain();
+renderMistral();
+</script>
